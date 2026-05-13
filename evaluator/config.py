@@ -16,4 +16,3 @@ class EvalConfig:
     max_model_len: int = 32768
     max_new_tokens: int = 128
     batch_size: int = 32  # batch 推理的批次大小
-    max_concurrent: int = 64  # 已废弃（保留兼容性）

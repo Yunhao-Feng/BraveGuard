@@ -7,8 +7,8 @@ from typing import List, Dict
 from .config import EvalConfig
 from .data_loader import TrajectoryLoader, DatasetLoader
 from .prompt_builder import PromptBuilder
-from .model_engine import Qwen3GuardEngine
-from .result_parser import ResultParser, GuardResult
+from .factory import create_engine_and_parser
+from .base_parser import GuardResult
 from .csv_writer import CSVWriter
 
 logger = logging.getLogger(__name__)
@@ -37,8 +37,8 @@ class EvalPipeline:
         self.trajectory_loader = TrajectoryLoader(config.input_dir)
         self.dataset_loader = DatasetLoader(config.dataset_path) if config.mode == 1 else None
         self.prompt_builder = PromptBuilder()
-        self.engine = Qwen3GuardEngine(config)
-        self.parser = ResultParser()
+        # 使用工厂函数自动创建引擎和解析器
+        self.engine, self.parser = create_engine_and_parser(config)
         self.csv_writer = CSVWriter(config.output_path)
         self._completed_count = 0
         self._harmful_count = 0
@@ -150,6 +150,10 @@ class EvalPipeline:
                         # 空输出，标记为错误
                         result = GuardResult(
                             session_id=session_id,
+                            safety_label=None,
+                            categories=None,
+                            refusal=None,
+                            raw_output="",
                             harmful=False,
                             error="Empty output or failed to generate",
                         )
@@ -176,6 +180,10 @@ class EvalPipeline:
                     # 即使失败也记录到 CSV
                     result = GuardResult(
                         session_id=session_id,
+                        safety_label=None,
+                        categories=None,
+                        refusal=None,
+                        raw_output="",
                         harmful=False,
                         error=str(e),
                     )

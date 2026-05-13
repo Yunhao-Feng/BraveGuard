@@ -6,7 +6,7 @@ import threading
 from pathlib import Path
 from typing import List
 
-from .result_parser import GuardResult
+from .base_parser import GuardResult
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,8 @@ class CSVWriter:
             writer.writeheader()
             for result in sorted_results:
                 row = result.to_dict()
+                # 将 raw_output 中的换行符替换为字面字符串 \n，避免跨行
+                row['raw_output'] = row['raw_output'].replace('\n', '\\n').replace('\r', '\\r')
                 writer.writerow(row)
 
         logger.info(f"结果已写入: {self.output_path}")
@@ -92,4 +94,7 @@ class CSVWriter:
             # 追加写入
             with open(self.output_path, "a", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
-                writer.writerow(result.to_dict())
+                # 将 raw_output 中的换行符替换为字面字符串 \n，避免跨行
+                row = result.to_dict()
+                row['raw_output'] = row['raw_output'].replace('\n', '\\n').replace('\r', '\\r')
+                writer.writerow(row)
