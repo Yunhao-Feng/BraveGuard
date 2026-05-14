@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
         "--input", "-i",
         type=str,
         required=False,
-        default="exports_v8",
+        default="exports",
         help="轨迹 JSONL 文件所在文件夹路径（如 exports_v8）",
     )
     parser.add_argument(

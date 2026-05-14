@@ -1,0 +1,32 @@
+{
+  "agent": {
+    "base_url": "https://idealab.alibaba-inc.com/api/openai/v1",
+    "api_keys": [
+      "6ebb576b22c615c930b5a7129bdd7a60",
+      "f5537c868ab94befb6b1691abb740d80",
+      "9016c1ddc8196edad087b02df405ca48"
+    ],
+    "model": "gpt-5.2-1211-global"
+  },
+  "judge": {
+    "model": "gemini-3-flash-preview"
+  },
+  "rock": {
+    "api_key": "t-bcff0c402f8a43dd",
+    "user_id": "521024",
+    "experiment_id": "openclaw_1b",
+    "image": "rex-registry.cn-hangzhou.cr.aliyuncs.com/chatos/openclaw-cluster:v6"
+  },
+  "execution": {
+    "concurrency": 5,
+    "max_retries": 8,
+    "retry_delay": 3,
+    "timeout": 900
+  },
+  "paths": {
+    "dataset": "data/subset.json",
+    "exports_dir": "exports",
+    "results_csv": "exports/results.csv",
+    "openclaw_config": "config/openclaw.json"
+  }
+}
