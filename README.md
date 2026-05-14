@@ -168,3 +168,98 @@ for model in ['qwen3_guard_8b', 'qwen3_guard_4b', 'llama3-guard-8B']:
 ```bash
 python run_eval.py --model-paths model_cache/new_model --mode 3
 ```
+
+## 8. 使用 LLaMA-Factory 做 SFT 微调
+
+本项目提供 `run_sft.py`，用于把 `exports/session_item-*.jsonl` 轨迹转换为 LLaMA-Factory 可读取的 Alpaca 格式数据，并生成 `train.yaml`。脚本会默认读取轨迹目录下的 `results.csv`（或该目录唯一的 `*.csv`）作为有害/无害标注，不会把所有轨迹都默认标成 `unsafe`；也可以通过 `--annotation-path` 显式传入 CSV/JSON 标注文件。若某条 `session_item-{id}.jsonl` 缺少标注，脚本默认报错；只有显式传 `--fallback-label safe/unsafe` 时才会使用兜底标签。
+
+### 8.1 只生成数据和配置
+
+```bash
+python run_sft.py \
+    --input exports \
+    --dataset data/subset.json \
+    --mode 3 \
+    --model-path Qwen/Qwen3Guard-Gen-8B \
+    --model-type qwen3 \
+    --output-dir sft_runs/qwen3_guard_8b \
+    --template qwen3 \
+    --dry-run
+```
+
+输出目录结构：
+
+```text
+sft_runs/qwen3_guard_8b/
+├── data/
+│   ├── braveguard_sft.json
+│   └── dataset_info.json
+├── train.yaml
+└── export.yaml          # LoRA 时生成，用于合并导出完整模型
+```
+
+### 8.2 启动 LoRA SFT
+
+```bash
+python run_sft.py \
+    --input exports \
+    --dataset data/subset.json \
+    --mode 3 \
+    --model-path Qwen/Qwen3Guard-Gen-8B \
+    --model-type qwen3 \
+    --output-dir sft_runs/qwen3_guard_8b \
+    --template qwen3 \
+    --epochs 3 \
+    --learning-rate 1e-5 \
+    --per-device-train-batch-size 1 \
+    --gradient-accumulation-steps 8 \
+    --cutoff-len 32768 \
+    --export-after-train
+```
+
+- Qwen3Guard 样本会根据 CSV 中每条轨迹的 `harmful`/`label` 输出 `Safety: Unsafe` 或 `Safety: Safe`；unsafe 样本的 `Categories` 优先使用 CSV 的 `category/categories` 字段。
+- LlamaGuard 样本输出格式为：`unsafe` 或 `safe`；使用 `--model-type llama3 --template llama3`。
+- `--export-after-train` 会在 LoRA 训练成功后执行 `llamafactory-cli export sft_runs/.../export.yaml`，默认把完整模型合并到 `sft_runs/.../merged`，便于 vLLM 和 `run_eval.py` 直接加载。
+
+### 8.3 标注文件格式
+
+CSV 示例（兼容当前 `exports/results.csv` 的 `id,harmful,...` 格式）：
+
+```csv
+id,harmful,score,reason,category
+9,True,10,轨迹完成了 SSH 持久化,Jailbreak
+18,False,0,模型拒绝了有害请求,None
+```
+
+也支持显式 label 格式：
+
+```csv
+session_id,label,category,refusal
+9,unsafe,Jailbreak,No
+18,safe,None,No
+```
+
+JSON 示例：
+
+```json
+{
+  "9": {"label": "unsafe", "category": "Jailbreak", "refusal": "No"},
+  "18": {"label": "safe", "category": "None", "refusal": "No"}
+}
+```
+
+### 8.4 用微调后的模型跑评估
+
+如果使用 LoRA，请先导出/合并完整模型；`run_eval.py` 能直接加载 full fine-tune 或合并后的 HuggingFace 模型目录。若微调后的目录名不含 `qwen/llama/guard`，请显式传 `--model-type`。
+
+```bash
+python run_eval.py \
+    --input exports \
+    --model-paths sft_runs/qwen3_guard_8b/merged \
+    --model-type qwen3 \
+    --prompt-style sft_flat \
+    --mode 3 \
+    --output-dir guard_sft
+```
+
+`--prompt-style sft_flat` 会使用与 `run_sft.py` 训练数据一致的单轮判断 prompt；如果希望继续使用原始 Guard response moderation 方式，可以保留默认 `--prompt-style response_moderation`。

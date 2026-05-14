@@ -36,7 +36,7 @@ class EvalPipeline:
         self.config = config
         self.trajectory_loader = TrajectoryLoader(config.input_dir)
         self.dataset_loader = DatasetLoader(config.dataset_path) if config.mode == 1 else None
-        self.prompt_builder = PromptBuilder()
+        self.prompt_builder = PromptBuilder(prompt_style=config.prompt_style)
         # 使用工厂函数自动创建引擎和解析器
         self.engine, self.parser = create_engine_and_parser(config)
         self.csv_writer = CSVWriter(config.output_path)

@@ -101,6 +101,18 @@ def parse_args() -> argparse.Namespace:
         default=128,
         help="生成最大 token 数（默认 128）",
     )
+    parser.add_argument(
+        "--model-type",
+        choices=["auto", "qwen3", "llama3"],
+        default="auto",
+        help="模型类型覆盖。微调后目录名不含 qwen/llama/guard 时建议显式指定（默认 auto）",
+    )
+    parser.add_argument(
+        "--prompt-style",
+        choices=["response_moderation", "sft_flat"],
+        default="response_moderation",
+        help="评估 prompt 风格：原始 guard response moderation 或与 run_sft.py 数据一致的单轮 sft_flat",
+    )
 
     args = parser.parse_args()
     return args
@@ -145,6 +157,8 @@ def run_single_model_eval(
     max_model_len: int,
     max_new_tokens: int,
     batch_size: int,
+    model_type: str | None = None,
+    prompt_style: str = "response_moderation",
 ):
     """
     运行单个模型的评估。
@@ -170,6 +184,8 @@ def run_single_model_eval(
         max_model_len=max_model_len,
         max_new_tokens=max_new_tokens,
         batch_size=batch_size,
+        model_type=model_type,
+        prompt_style=prompt_style,
     )
 
     model_name = extract_model_name(model_path)
@@ -218,6 +234,8 @@ def main():
                 max_model_len=args.max_model_len,
                 max_new_tokens=args.max_new_tokens,
                 batch_size=args.batch_size,
+                model_type=None if args.model_type == "auto" else args.model_type,
+                prompt_style=args.prompt_style,
             )
             print(f"✓ 模型 {extract_model_name(model_path)} 评估完成\n")
         except Exception as e:
