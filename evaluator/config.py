@@ -16,3 +16,5 @@ class EvalConfig:
     max_model_len: int = 32768
     max_new_tokens: int = 128
     batch_size: int = 32  # batch 推理的批次大小
+    model_type: str | None = None  # qwen3 / llama3；None 时从路径自动识别
+    prompt_style: str = "response_moderation"  # response_moderation / sft_flat

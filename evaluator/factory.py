@@ -48,7 +48,7 @@ def create_engine_and_parser(
     Returns:
         (engine, parser) 元组
     """
-    model_type = detect_model_type(config.model_path)
+    model_type = config.model_type or detect_model_type(config.model_path)
     logger.info(f"检测到模型类型: {model_type}")
 
     if model_type == "llama3":
