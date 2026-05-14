@@ -106,6 +106,8 @@ python run_eval.py \
 | `--max-model-len` | — | `32768` | 最大上下文长度 |
 | `--batch-size` | — | `32` | batch 推理批次大小 |
 | `--max-new-tokens` | — | `128` | 生成最大 token 数 |
+| `--prompt-style` | — | `sft_flat` | 默认使用与 `run_sft.py` 一致的单轮 prompt；可设为 `response_moderation` 回到原始 guard 格式 |
+| `--annotation-path` | — | 自动读取 `input/results.csv` | 标注 CSV/JSON，用于按真实标签计算 accuracy |
 
 ### 性能调优
 
@@ -120,7 +122,9 @@ python run_eval.py \
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `session_id` | int | 轨迹 ID |
-| `harmful` | bool | 是否有害 |
+| `harmful` | bool | guard 是否判为有害（Unsafe/Controversial 视为有害） |
+| `expected_harmful` | bool | 标注文件中的真实有害性；无标注为空 |
+| `correct` | bool | `harmful` 是否匹配 `expected_harmful`；无标注为空 |
 | `safety_label` | str | Safe / Unsafe / Controversial |
 | `categories` | str | 风险类别（逗号分隔）|
 | `refusal` | str | 是否拒绝（Qwen3Guard 独有）|
@@ -171,7 +175,7 @@ python run_eval.py --model-paths model_cache/new_model --mode 3
 
 ## 8. 使用 LLaMA-Factory 做 SFT 微调
 
-本项目提供 `run_sft.py`，用于把 `exports/session_item-*.jsonl` 轨迹转换为 LLaMA-Factory 可读取的 Alpaca 格式数据，并生成 `train.yaml`。脚本会默认读取轨迹目录下的 `results.csv`（或该目录唯一的 `*.csv`）作为有害/无害标注，不会把所有轨迹都默认标成 `unsafe`；也可以通过 `--annotation-path` 显式传入 CSV/JSON 标注文件。若某条 `session_item-{id}.jsonl` 缺少标注，脚本默认报错；只有显式传 `--fallback-label safe/unsafe` 时才会使用兜底标签。
+本项目提供 `run_sft.py`，用于把 `exports/session_item-*.jsonl` 轨迹转换为 LLaMA-Factory 可读取的 Alpaca 格式数据，并生成 `train.yaml`。默认会切分 10% 验证集、开启 `do_eval`/`eval_loss`/`compute_accuracy`，避免训练结束画图时缺少 `eval_loss` 或 `eval_accuracy`。脚本会默认读取轨迹目录下的 `results.csv`（或该目录唯一的 `*.csv`）作为有害/无害标注，不会把所有轨迹都默认标成 `unsafe`；也可以通过 `--annotation-path` 显式传入 CSV/JSON 标注文件。若某条 `session_item-{id}.jsonl` 缺少标注，脚本默认报错；只有显式传 `--fallback-label safe/unsafe` 时才会使用兜底标签。
 
 ### 8.1 只生成数据和配置
 
@@ -220,6 +224,7 @@ python run_sft.py \
 - Qwen3Guard 样本会根据 CSV 中每条轨迹的 `harmful`/`label` 输出 `Safety: Unsafe` 或 `Safety: Safe`；unsafe 样本的 `Categories` 优先使用 CSV 的 `category/categories` 字段。
 - LlamaGuard 样本输出格式为：`unsafe` 或 `safe`；使用 `--model-type llama3 --template llama3`。
 - `--export-after-train` 会在 LoRA 训练成功后执行 `llamafactory-cli export sft_runs/.../export.yaml`，默认把完整模型合并到 `sft_runs/.../merged`，便于 vLLM 和 `run_eval.py` 直接加载。
+- Qwen3 模板默认写入 `enable_thinking: false`，以关闭 reasoning/thinking 分支，避免 SFT 过程中出现 think/no_think 模板不一致问题；如确实需要 reasoning 模板，可传 `--enable-thinking`。
 
 ### 8.3 标注文件格式
 
@@ -262,4 +267,4 @@ python run_eval.py \
     --output-dir guard_sft
 ```
 
-`--prompt-style sft_flat` 会使用与 `run_sft.py` 训练数据一致的单轮判断 prompt；如果希望继续使用原始 Guard response moderation 方式，可以保留默认 `--prompt-style response_moderation`。
+`run_eval.py` 默认使用 `--prompt-style sft_flat`，与 `run_sft.py` 训练数据的单轮判断 prompt 对齐；如果希望继续使用原始 Guard response moderation 方式，可以显式传 `--prompt-style response_moderation`。评估时会默认读取 `exports/results.csv`（或唯一 `*.csv`）中的 `harmful`/`label`，按真实标签计算 `Accuracy`；`Unsafe` 和 `Controversial`（大小写不敏感）都会视为 guard 判定该轨迹有害。

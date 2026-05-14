@@ -53,8 +53,8 @@ class Qwen3ResultParser(BaseResultParser):
         if refusal_match:
             refusal = refusal_match.group(1).strip().capitalize()
 
-        # 推导 harmful
-        harmful = (safety_label.upper() == "UNSAFE") if safety_label else False
+        # 推导 harmful：Unsafe 和 Controversial 都视为 guard 认为轨迹有害
+        harmful = safety_label.lower() in {"unsafe", "controversial"} if safety_label else False
 
         return GuardResult(
             session_id=session_id,

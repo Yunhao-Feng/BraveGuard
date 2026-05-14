@@ -64,6 +64,7 @@ class Qwen3GuardEngine(BaseGuardEngine):
             messages,
             tokenize=False,
             add_generation_prompt=True,  # 添加生成 prompt 后缀
+            enable_thinking=False,  # Qwen3 reasoning 模板下显式关闭 thinking/no_think 分支
         )
 
         # 检查并截断过长的 prompt

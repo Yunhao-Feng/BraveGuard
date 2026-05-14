@@ -53,7 +53,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fallback-label", choices=["safe", "unsafe"], help="仅当某条轨迹缺少标注时使用的兜底标签；默认不兜底并报错")
     parser.add_argument("--category", default="Jailbreak", help="Qwen3Guard Unsafe 样本默认 Categories")
     parser.add_argument("--refusal", choices=["Yes", "No"], default="No", help="Qwen3Guard 默认 Refusal 字段")
-    parser.add_argument("--val-size", type=float, default=0.0, help="从训练样本切分验证集的比例，如 0.1")
+    parser.add_argument("--val-size", type=float, default=0.1, help="从训练样本切分验证集的比例；设为 0 可关闭 SFT eval")
     parser.add_argument("--seed", type=int, default=42, help="随机种子")
 
     # LLaMA-Factory training arguments
@@ -74,8 +74,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gradient-checkpointing", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--logging-steps", type=int, default=5)
     parser.add_argument("--save-steps", type=int, default=100)
+    parser.add_argument("--eval-steps", type=int, default=50, help="有验证集时的 eval 间隔")
     parser.add_argument("--warmup-ratio", type=float, default=0.03)
     parser.add_argument("--deepspeed", help="可选 DeepSpeed 配置路径")
+    parser.add_argument("--enable-thinking", action=argparse.BooleanOptionalAction, default=False, help="Qwen3 reasoning 模板是否启用 thinking；默认关闭以避免 SFT 出现 think/no_think 模板冲突")
     parser.add_argument("--extra-arg", action="append", default=[], help="额外 LLaMA-Factory YAML 参数，格式 key=value，可重复")
     parser.add_argument("--export-dir", help="LoRA 合并导出的完整模型目录；默认 output-dir/merged")
     parser.add_argument("--export-after-train", action="store_true", help="训练成功后调用 llamafactory-cli export 合并 LoRA，便于 run_eval 直接加载")
@@ -175,8 +177,21 @@ def build_train_config(args: argparse.Namespace, model_type: str, template: str,
         "gradient_checkpointing": args.gradient_checkpointing,
     }
 
+    if model_type == "qwen3":
+        config["enable_thinking"] = args.enable_thinking
+
     if args.val_size > 0:
-        config.update({"eval_dataset": f"{args.dataset_name}_eval", "val_size": 0.0, "do_eval": True})
+        config.update(
+            {
+                "eval_dataset": f"{args.dataset_name}_eval",
+                "val_size": 0.0,
+                "do_eval": True,
+                "eval_strategy": "steps",
+                "eval_steps": args.eval_steps,
+                "per_device_eval_batch_size": args.per_device_train_batch_size,
+                "compute_accuracy": True,
+            }
+        )
     if args.finetuning_type == "lora":
         config.update(
             {

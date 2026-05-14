@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 CSV_FIELDS = [
     "session_id",
     "harmful",
+    "expected_harmful",
+    "correct",
     "safety_label",
     "categories",
     "refusal",
@@ -53,11 +55,15 @@ class CSVWriter:
         # 打印统计
         total = len(sorted_results)
         harmful_count = sum(1 for r in sorted_results if r.harmful)
+        labeled_count = sum(1 for r in sorted_results if r.expected_harmful is not None)
+        correct_count = sum(1 for r in sorted_results if r.correct is True)
         error_count = sum(1 for r in sorted_results if r.error)
         if total > 0:
             asr = harmful_count / total
-            print(f"\n[统计] 总数: {total}, 有害: {harmful_count}, "
-                  f"ASR: {asr:.4f}, 解析错误: {error_count}")
+            accuracy = correct_count / labeled_count if labeled_count else 0.0
+            print(f"\n[统计] 总数: {total}, guard 判有害: {harmful_count}, "
+                  f"ASR: {asr:.4f}, Accuracy: {accuracy:.4f} "
+                  f"({correct_count}/{labeled_count}), 解析错误: {error_count}")
         else:
             print("\n[统计] 无结果")
 
