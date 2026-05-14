@@ -53,7 +53,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fallback-label", choices=["safe", "unsafe"], help="仅当某条轨迹缺少标注时使用的兜底标签；默认不兜底并报错")
     parser.add_argument("--category", default="Jailbreak", help="Qwen3Guard Unsafe 样本默认 Categories")
     parser.add_argument("--refusal", choices=["Yes", "No"], default="No", help="Qwen3Guard 默认 Refusal 字段")
-    parser.add_argument("--val-size", type=float, default=0.0, help="从训练样本切分验证集的比例，如 0.1")
+    parser.add_argument("--val-size", type=float, default=0.2, help="从训练样本切分验证集的比例；默认 0.2，10 条样本时会留 2 条并尽量覆盖 safe/unsafe")
     parser.add_argument("--seed", type=int, default=42, help="随机种子")
 
     # LLaMA-Factory training arguments
@@ -65,15 +65,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=float, default=3.0)
     parser.add_argument("--learning-rate", type=float, default=1e-5)
     parser.add_argument("--per-device-train-batch-size", type=int, default=1)
-    parser.add_argument("--gradient-accumulation-steps", type=int, default=8)
+    parser.add_argument("--gradient-accumulation-steps", type=int, default=1, help="小数据集默认不累积，避免每个 epoch 只有极少 optimizer step")
     parser.add_argument("--lora-rank", type=int, default=16)
     parser.add_argument("--lora-alpha", type=int, default=32)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
     parser.add_argument("--lora-target", default="all")
     parser.add_argument("--bf16", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--gradient-checkpointing", action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument("--logging-steps", type=int, default=5)
-    parser.add_argument("--save-steps", type=int, default=100)
+    parser.add_argument("--logging-steps", type=int, default=1)
+    parser.add_argument("--save-steps", type=int, default=20)
+    parser.add_argument("--eval-strategy", choices=["no", "steps", "epoch"], default="epoch", help="有验证集时的评估频率")
+    parser.add_argument("--eval-steps", type=int, default=20, help="--eval-strategy steps 时的评估间隔")
+    parser.add_argument("--per-device-eval-batch-size", type=int, default=1)
+    parser.add_argument("--resize-vocab", action=argparse.BooleanOptionalAction, default=True, help="让模型 embedding 对齐 tokenizer 的新增 special token")
+    parser.add_argument("--enable-thinking", action=argparse.BooleanOptionalAction, default=False, help="Qwen3 模板默认关闭 reasoning/thinking，避免 think/nothink 模板不一致")
     parser.add_argument("--warmup-ratio", type=float, default=0.03)
     parser.add_argument("--deepspeed", help="可选 DeepSpeed 配置路径")
     parser.add_argument("--extra-arg", action="append", default=[], help="额外 LLaMA-Factory YAML 参数，格式 key=value，可重复")
@@ -173,10 +178,23 @@ def build_train_config(args: argparse.Namespace, model_type: str, template: str,
         "plot_loss": True,
         "bf16": args.bf16,
         "gradient_checkpointing": args.gradient_checkpointing,
+        "resize_vocab": args.resize_vocab,
     }
+    if model_type == "qwen3":
+        config["enable_thinking"] = args.enable_thinking
 
     if args.val_size > 0:
-        config.update({"eval_dataset": f"{args.dataset_name}_eval", "val_size": 0.0, "do_eval": True})
+        config.update(
+            {
+                "eval_dataset": f"{args.dataset_name}_eval",
+                "val_size": 0.0,
+                "do_eval": args.eval_strategy != "no",
+                "eval_strategy": args.eval_strategy,
+                "per_device_eval_batch_size": args.per_device_eval_batch_size,
+            }
+        )
+        if args.eval_strategy == "steps":
+            config["eval_steps"] = args.eval_steps
     if args.finetuning_type == "lora":
         config.update(
             {
@@ -209,6 +227,7 @@ def build_export_config(args: argparse.Namespace, template: str) -> Dict[str, An
         "export_size": 5,
         "export_device": "cpu",
         "export_legacy_format": False,
+        "resize_vocab": args.resize_vocab,
     }
 
 

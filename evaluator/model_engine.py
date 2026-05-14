@@ -1,5 +1,6 @@
 """模型推理引擎：使用 vLLM 进行批量推理"""
 
+import inspect
 import logging
 from typing import Dict, List
 
@@ -60,11 +61,16 @@ class Qwen3GuardEngine(BaseGuardEngine):
         Qwen3Guard 使用标准的 chat template 格式。
         如果 prompt 超过最大长度，会自动截断。
         """
-        text = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,  # 添加生成 prompt 后缀
-        )
+        chat_template_kwargs = {
+            "tokenize": False,
+            "add_generation_prompt": True,  # 添加生成 prompt 后缀
+        }
+        if self.config.enable_thinking is not None:
+            signature = inspect.signature(self.tokenizer.apply_chat_template)
+            if "enable_thinking" in signature.parameters:
+                chat_template_kwargs["enable_thinking"] = self.config.enable_thinking
+
+        text = self.tokenizer.apply_chat_template(messages, **chat_template_kwargs)
 
         # 检查并截断过长的 prompt
         input_ids = self.tokenizer.encode(text)

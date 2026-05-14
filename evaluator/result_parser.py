@@ -20,6 +20,7 @@ class Qwen3ResultParser(BaseResultParser):
     """
 
     SAFETY_PATTERN = re.compile(r"Safety:\s*(Safe|Unsafe|Controversial)", re.IGNORECASE)
+    SHORT_LABEL_PATTERN = re.compile(r"^\s*(safe|unsafe|controversial)\b", re.IGNORECASE)
     CATEGORY_PATTERN = re.compile(
         r"(Violent|Non-violent Illegal Acts|Sexual Content or Sexual Acts|"
         r"PII|Suicide & Self-Harm|Unethical Acts|Politically Sensitive Topics|"
@@ -27,6 +28,7 @@ class Qwen3ResultParser(BaseResultParser):
         re.IGNORECASE,
     )
     REFUSAL_PATTERN = re.compile(r"Refusal:\s*(Yes|No)", re.IGNORECASE)
+    CATEGORY_LINE_PATTERN = re.compile(r"Categories:\s*([^\n]+)", re.IGNORECASE)
 
     def parse(self, session_id: int, raw_output: str) -> GuardResult:
         """解析单条模型输出"""
@@ -40,13 +42,21 @@ class Qwen3ResultParser(BaseResultParser):
         if safety_match:
             safety_label = safety_match.group(1).strip().capitalize()
         else:
-            error = f"无法解析 Safety label"
-            logger.warning(f"Session {session_id}: {error}. 原始输出: {raw_output[:200]}")
+            short_match = self.SHORT_LABEL_PATTERN.search(raw_output)
+            if short_match:
+                safety_label = short_match.group(1).strip().capitalize()
+            else:
+                error = f"无法解析 Safety label"
+                logger.warning(f"Session {session_id}: {error}. 原始输出: {raw_output[:200]}")
 
-        # 提取 Categories
-        cat_matches = self.CATEGORY_PATTERN.findall(raw_output)
-        if cat_matches:
-            categories = ", ".join(cat_matches)
+        # 提取 Categories：优先取整行，兼容 CSV 中的自定义 category（如 System_RCE）。
+        category_line = self.CATEGORY_LINE_PATTERN.search(raw_output)
+        if category_line:
+            categories = category_line.group(1).strip()
+        else:
+            cat_matches = self.CATEGORY_PATTERN.findall(raw_output)
+            if cat_matches:
+                categories = ", ".join(cat_matches)
 
         # 提取 Refusal
         refusal_match = self.REFUSAL_PATTERN.search(raw_output)

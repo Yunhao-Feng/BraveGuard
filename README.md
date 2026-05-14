@@ -184,6 +184,8 @@ python run_sft.py \
     --model-type qwen3 \
     --output-dir sft_runs/qwen3_guard_8b \
     --template qwen3 \
+    --val-size 0.2 \
+    --no-enable-thinking \
     --dry-run
 ```
 
@@ -193,6 +195,7 @@ python run_sft.py \
 sft_runs/qwen3_guard_8b/
 ├── data/
 │   ├── braveguard_sft.json
+│   ├── braveguard_sft_eval.json
 │   └── dataset_info.json
 ├── train.yaml
 └── export.yaml          # LoRA 时生成，用于合并导出完整模型
@@ -212,13 +215,19 @@ python run_sft.py \
     --epochs 3 \
     --learning-rate 1e-5 \
     --per-device-train-batch-size 1 \
-    --gradient-accumulation-steps 8 \
+    --gradient-accumulation-steps 1 \
     --cutoff-len 32768 \
+    --val-size 0.2 \
+    --eval-strategy epoch \
+    --no-enable-thinking \
     --export-after-train
 ```
 
 - Qwen3Guard 样本会根据 CSV 中每条轨迹的 `harmful`/`label` 输出 `Safety: Unsafe` 或 `Safety: Safe`；unsafe 样本的 `Categories` 优先使用 CSV 的 `category/categories` 字段。
 - LlamaGuard 样本输出格式为：`unsafe` 或 `safe`；使用 `--model-type llama3 --template llama3`。
+- `--val-size` 默认是 `0.2`，小样本下会尽量让验证集同时覆盖 `safe/unsafe`，训练 YAML 会开启 `do_eval` 和 `eval_strategy`，因此可以看到 `eval_loss`，而不是只画训练 loss。
+- Qwen3 默认写入 `enable_thinking: false`，评估也默认 `--no-enable-thinking`，避免 reasoning / no-thinking 模板边界和 SFT 数据不一致。
+- `resize_vocab` 默认开启，用于让模型 embedding 与 tokenizer 的 PAD/BOS/EOS 等 special token 配置保持一致。
 - `--export-after-train` 会在 LoRA 训练成功后执行 `llamafactory-cli export sft_runs/.../export.yaml`，默认把完整模型合并到 `sft_runs/.../merged`，便于 vLLM 和 `run_eval.py` 直接加载。
 
 ### 8.3 标注文件格式
@@ -258,8 +267,9 @@ python run_eval.py \
     --model-paths sft_runs/qwen3_guard_8b/merged \
     --model-type qwen3 \
     --prompt-style sft_flat \
+    --no-enable-thinking \
     --mode 3 \
     --output-dir guard_sft
 ```
 
-`--prompt-style sft_flat` 会使用与 `run_sft.py` 训练数据一致的单轮判断 prompt；如果希望继续使用原始 Guard response moderation 方式，可以保留默认 `--prompt-style response_moderation`。
+`run_eval.py` 现在默认使用 `--prompt-style sft_flat`，并且会自动尝试读取 `--input` 目录下的 `results.csv` 计算 accuracy/precision/recall/F1；如果希望继续使用原始 Guard response moderation 方式，可以显式传 `--prompt-style response_moderation`。

@@ -10,6 +10,7 @@ from .prompt_builder import PromptBuilder
 from .factory import create_engine_and_parser
 from .base_parser import GuardResult
 from .csv_writer import CSVWriter
+from .metrics import BinaryMetrics, load_reference_labels
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,8 @@ class EvalPipeline:
         self._completed_count = 0
         self._harmful_count = 0
         self._total_count = 0
+        self.reference_labels = load_reference_labels(config.input_dir, config.annotation_path)
+        self.metrics = BinaryMetrics()
 
     def run(self):
         """执行完整评估流程（batch 串行推理）"""
@@ -96,6 +99,9 @@ class EvalPipeline:
 
         self._total_count = len(tasks_data)
         print(f"  待评估: {self._total_count} 条, 跳过: {skipped} 条")
+        if self.reference_labels:
+            matched = sum(1 for session_id, _ in tasks_data if session_id in self.reference_labels)
+            print(f"  参考标注: {matched}/{self._total_count} 条可用于 accuracy/precision/recall/F1")
 
         if self._total_count == 0:
             print("无待评估数据，退出。")
@@ -166,14 +172,21 @@ class EvalPipeline:
                     if result.harmful:
                         self._harmful_count += 1
 
-                    # 计算当前识别准确率（所有轨迹都是有害的）
-                    accuracy = self._harmful_count / self._completed_count
+                    expected = self.reference_labels.get(session_id)
+                    metric_text = f"harmful率: {self._harmful_count / self._completed_count:.4f} ({self._harmful_count}/{self._completed_count})"
+                    if expected is not None:
+                        self.metrics.update(expected, result.harmful)
+                        metric_text = (
+                            f"accuracy: {self.metrics.accuracy:.4f} "
+                            f"({self.metrics.tp + self.metrics.tn}/{self.metrics.count}), "
+                            f"P/R/F1: {self.metrics.precision:.4f}/{self.metrics.recall:.4f}/{self.metrics.f1:.4f}"
+                        )
 
                     # 实时输出进度
                     status = "HARMFUL" if result.harmful else ("ERROR" if result.error else "SAFE")
                     print(f"[{self._completed_count}/{self._total_count}] "
                           f"Session {session_id}: {status} | "
-                          f"识别准确率: {accuracy:.4f} ({self._harmful_count}/{self._completed_count})")
+                          f"{metric_text}")
 
                 except Exception as e:
                     logger.error(f"Session {session_id} 解析失败: {e}")
@@ -191,17 +204,35 @@ class EvalPipeline:
 
                     # 更新计数
                     self._completed_count += 1
-                    accuracy = self._harmful_count / self._completed_count if self._completed_count > 0 else 0.0
+                    expected = self.reference_labels.get(session_id)
+                    if expected is not None:
+                        self.metrics.update(expected, False)
+                        metric_text = (
+                            f"accuracy: {self.metrics.accuracy:.4f} "
+                            f"({self.metrics.tp + self.metrics.tn}/{self.metrics.count}), "
+                            f"P/R/F1: {self.metrics.precision:.4f}/{self.metrics.recall:.4f}/{self.metrics.f1:.4f}"
+                        )
+                    else:
+                        metric_text = f"harmful率: {self._harmful_count / self._completed_count if self._completed_count > 0 else 0.0:.4f} ({self._harmful_count}/{self._completed_count})"
                     print(f"[{self._completed_count}/{self._total_count}] "
                           f"Session {session_id}: ERROR | "
-                          f"识别准确率: {accuracy:.4f} ({self._harmful_count}/{self._completed_count})")
+                          f"{metric_text}")
 
         elapsed = time.time() - start_time
-        final_accuracy = self._harmful_count / self._total_count if self._total_count > 0 else 0.0
+        harmful_rate = self._harmful_count / self._total_count if self._total_count > 0 else 0.0
 
         print(f"\n[完成] 耗时: {elapsed:.1f}s, "
               f"平均: {elapsed / self._total_count:.2f}s/条")
-        print(f"最终识别准确率: {final_accuracy:.4f} ({self._harmful_count}/{self._total_count})")
+        print(f"最终 harmful 预测率: {harmful_rate:.4f} ({self._harmful_count}/{self._total_count})")
+        if self.metrics.count:
+            print(
+                "最终评估指标: "
+                f"accuracy={self.metrics.accuracy:.4f}, "
+                f"precision={self.metrics.precision:.4f}, "
+                f"recall={self.metrics.recall:.4f}, "
+                f"f1={self.metrics.f1:.4f}, "
+                f"tp={self.metrics.tp}, tn={self.metrics.tn}, fp={self.metrics.fp}, fn={self.metrics.fn}"
+            )
 
         if self.config.output_path:
             print(f"结果已写入: {self.config.output_path}")

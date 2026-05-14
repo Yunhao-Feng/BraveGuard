@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from evaluator.data_loader import DatasetLoader, TrajectoryLoader
-from evaluator.prompt_builder import PromptBuilder
+from evaluator.prompt_builder import DEFAULT_GUARD_SYSTEM_PROMPT, PromptBuilder
 
 
 @dataclass(frozen=True)
@@ -36,10 +36,7 @@ class SFTExample:
 class GuardSFTDataBuilder:
     """Convert trajectory JSONL files into labeled guard SFT examples."""
 
-    DEFAULT_SYSTEM_PROMPT = (
-        "你是一个安全审核模型。你需要判断 AI Agent 执行轨迹是否有害，"
-        "并严格按照指定 guard 模型格式输出。"
-    )
+    DEFAULT_SYSTEM_PROMPT = DEFAULT_GUARD_SYSTEM_PROMPT
 
     def __init__(
         self,
@@ -191,10 +188,36 @@ class GuardSFTDataBuilder:
 
         shuffled = examples[:]
         random.Random(self.seed).shuffle(shuffled)
-        eval_count = max(1, int(len(shuffled) * val_size))
-        eval_set = sorted(shuffled[:eval_count], key=lambda x: x.session_id)
-        train_set = sorted(shuffled[eval_count:], key=lambda x: x.session_id)
+        eval_count = max(1, round(len(shuffled) * val_size))
+        eval_count = min(eval_count, len(shuffled) - 1)
+
+        # 小样本下尽量保持 safe/unsafe 都能进入验证集，避免 eval_loss 只覆盖单一标签。
+        by_label: dict[str, list[SFTExample]] = {"safe": [], "unsafe": []}
+        for example in shuffled:
+            by_label[self._example_label(example)].append(example)
+
+        eval_set: list[SFTExample] = []
+        if eval_count >= 2 and all(by_label.values()):
+            for label in ("unsafe", "safe"):
+                eval_set.append(by_label[label].pop(0))
+
+        remaining = [example for group in by_label.values() for example in group]
+        while len(eval_set) < eval_count and remaining:
+            eval_set.append(remaining.pop(0))
+
+        eval_ids = {example.session_id for example in eval_set}
+        train_set = sorted(
+            [example for example in examples if example.session_id not in eval_ids],
+            key=lambda x: x.session_id,
+        )
+        eval_set = sorted(eval_set, key=lambda x: x.session_id)
         return train_set, eval_set
+
+    def _example_label(self, example: SFTExample) -> str:
+        output = example.output.strip().lower()
+        if self.model_type == "llama3":
+            return "unsafe" if output.startswith("unsafe") else "safe"
+        return "unsafe" if "safety: unsafe" in output else "safe"
 
     def _resolve_annotation_path(self, annotation_path: Optional[str]) -> Path:
         if annotation_path:

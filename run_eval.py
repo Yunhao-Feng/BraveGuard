@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import List
 
 from evaluator.config import EvalConfig
-from evaluator.pipeline import EvalPipeline
 
 
 def parse_args() -> argparse.Namespace:
@@ -110,8 +109,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--prompt-style",
         choices=["response_moderation", "sft_flat"],
-        default="response_moderation",
-        help="评估 prompt 风格：原始 guard response moderation 或与 run_sft.py 数据一致的单轮 sft_flat",
+        default="sft_flat",
+        help="评估 prompt 风格：默认使用与 run_sft.py 数据一致的单轮 sft_flat；可切回原始 guard response moderation",
+    )
+
+    parser.add_argument(
+        "--annotation-path",
+        type=str,
+        default=None,
+        help="可选标注 CSV/JSON，用于计算 accuracy/precision/recall/F1；默认自动尝试 input/results.csv",
+    )
+    parser.add_argument(
+        "--enable-thinking",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Qwen3 chat template 是否启用 reasoning/thinking；默认关闭以匹配 SFT/guard 分类",
     )
 
     args = parser.parse_args()
@@ -158,7 +170,9 @@ def run_single_model_eval(
     max_new_tokens: int,
     batch_size: int,
     model_type: str | None = None,
-    prompt_style: str = "response_moderation",
+    prompt_style: str = "sft_flat",
+    annotation_path: str | None = None,
+    enable_thinking: bool | None = False,
 ):
     """
     运行单个模型的评估。
@@ -186,6 +200,8 @@ def run_single_model_eval(
         batch_size=batch_size,
         model_type=model_type,
         prompt_style=prompt_style,
+        annotation_path=annotation_path,
+        enable_thinking=enable_thinking,
     )
 
     model_name = extract_model_name(model_path)
@@ -197,8 +213,12 @@ def run_single_model_eval(
     print(f"[Guard Eval] 输出路径: {config.output_path or '(不输出 CSV)'}")
     print(f"[Guard Eval] Tensor Parallel: {config.tensor_parallel}")
     print(f"[Guard Eval] Batch Size: {config.batch_size}")
+    print(f"[Guard Eval] Prompt Style: {config.prompt_style}")
+    print(f"[Guard Eval] Enable Thinking: {config.enable_thinking}")
     print("=" * 80)
     print()
+
+    from evaluator.pipeline import EvalPipeline
 
     pipeline = EvalPipeline(config)
     pipeline.run()
@@ -236,6 +256,8 @@ def main():
                 batch_size=args.batch_size,
                 model_type=None if args.model_type == "auto" else args.model_type,
                 prompt_style=args.prompt_style,
+                annotation_path=args.annotation_path,
+                enable_thinking=args.enable_thinking,
             )
             print(f"✓ 模型 {extract_model_name(model_path)} 评估完成\n")
         except Exception as e:

@@ -18,3 +18,5 @@ class EvalConfig:
     batch_size: int = 32  # batch 推理的批次大小
     model_type: str | None = None  # qwen3 / llama3；None 时从路径自动识别
     prompt_style: str = "response_moderation"  # response_moderation / sft_flat
+    annotation_path: str | None = None  # None 时自动尝试 input_dir/results.csv
+    enable_thinking: bool | None = False  # Qwen3 推理默认关闭 reasoning/thinking 模板
