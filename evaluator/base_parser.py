@@ -15,6 +15,8 @@ class GuardResult:
     refusal: Optional[str]  # Yes / No（仅 response moderation 有）
     raw_output: str  # 模型原始输出
     harmful: bool  # 基于 safety_label 推导
+    expected_harmful: Optional[bool] = None  # 标注中的真实有害性；无标注时为 None
+    correct: Optional[bool] = None  # harmful 是否与 expected_harmful 一致
     error: str = ""  # 解析错误信息
 
     def to_dict(self) -> dict:

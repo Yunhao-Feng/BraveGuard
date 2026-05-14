@@ -4,6 +4,7 @@ import logging
 import time
 from typing import List, Dict
 
+from .annotations import label_to_harmful, load_annotations, resolve_annotation_path
 from .config import EvalConfig
 from .data_loader import TrajectoryLoader, DatasetLoader
 from .prompt_builder import PromptBuilder
@@ -36,13 +37,47 @@ class EvalPipeline:
         self.config = config
         self.trajectory_loader = TrajectoryLoader(config.input_dir)
         self.dataset_loader = DatasetLoader(config.dataset_path) if config.mode == 1 else None
-        self.prompt_builder = PromptBuilder(prompt_style=config.prompt_style)
+        system_prompt = (
+            PromptBuilder.DEFAULT_SYSTEM_PROMPT
+            if config.prompt_style == "sft_flat"
+            else None
+        )
+        self.prompt_builder = PromptBuilder(
+            prompt_style=config.prompt_style,
+            system_prompt=system_prompt,
+        )
+        self.annotation_path, self.annotations = self._load_eval_annotations()
         # 使用工厂函数自动创建引擎和解析器
         self.engine, self.parser = create_engine_and_parser(config)
         self.csv_writer = CSVWriter(config.output_path)
         self._completed_count = 0
         self._harmful_count = 0
+        self._correct_count = 0
+        self._labeled_count = 0
         self._total_count = 0
+
+    def _load_eval_annotations(self):
+        """Load annotation CSV/JSON for accuracy reporting when available."""
+        try:
+            annotation_path = resolve_annotation_path(
+                self.config.input_dir,
+                self.config.annotation_path,
+            )
+            annotations = load_annotations(annotation_path)
+            logger.info(f"加载评估标注: {annotation_path} ({len(annotations)} 条)")
+            return annotation_path, annotations
+        except FileNotFoundError as exc:
+            logger.warning(f"未找到评估标注，accuracy 将不可用: {exc}")
+            return None, {}
+
+    def _attach_expected_label(self, result: GuardResult) -> GuardResult:
+        """Attach expected harmful/correct fields to a parsed guard result."""
+        row = self.annotations.get(result.session_id)
+        if row is None:
+            return result
+        result.expected_harmful = label_to_harmful(row.get("label"))
+        result.correct = result.harmful == result.expected_harmful
+        return result
 
     def run(self):
         """执行完整评估流程（batch 串行推理）"""
@@ -158,6 +193,8 @@ class EvalPipeline:
                             error="Empty output or failed to generate",
                         )
 
+                    result = self._attach_expected_label(result)
+
                     # 写入 CSV
                     self.csv_writer.append(result)
 
@@ -165,15 +202,26 @@ class EvalPipeline:
                     self._completed_count += 1
                     if result.harmful:
                         self._harmful_count += 1
+                    if result.expected_harmful is not None:
+                        self._labeled_count += 1
+                        if result.correct:
+                            self._correct_count += 1
 
-                    # 计算当前识别准确率（所有轨迹都是有害的）
-                    accuracy = self._harmful_count / self._completed_count
+                    # 按 CSV 标注计算 accuracy；ASR 仍表示 guard 判有害比例
+                    accuracy = self._correct_count / self._labeled_count if self._labeled_count else 0.0
+                    asr = self._harmful_count / self._completed_count
 
                     # 实时输出进度
                     status = "HARMFUL" if result.harmful else ("ERROR" if result.error else "SAFE")
+                    label_text = (
+                        f"expected={result.expected_harmful}, correct={result.correct}"
+                        if result.expected_harmful is not None
+                        else "expected=N/A"
+                    )
                     print(f"[{self._completed_count}/{self._total_count}] "
-                          f"Session {session_id}: {status} | "
-                          f"识别准确率: {accuracy:.4f} ({self._harmful_count}/{self._completed_count})")
+                          f"Session {session_id}: {status} | {label_text} | "
+                          f"Accuracy: {accuracy:.4f} ({self._correct_count}/{self._labeled_count}) | "
+                          f"ASR: {asr:.4f} ({self._harmful_count}/{self._completed_count})")
 
                 except Exception as e:
                     logger.error(f"Session {session_id} 解析失败: {e}")
@@ -187,21 +235,30 @@ class EvalPipeline:
                         harmful=False,
                         error=str(e),
                     )
+                    result = self._attach_expected_label(result)
                     self.csv_writer.append(result)
 
                     # 更新计数
                     self._completed_count += 1
-                    accuracy = self._harmful_count / self._completed_count if self._completed_count > 0 else 0.0
+                    if result.expected_harmful is not None:
+                        self._labeled_count += 1
+                        if result.correct:
+                            self._correct_count += 1
+                    accuracy = self._correct_count / self._labeled_count if self._labeled_count else 0.0
+                    asr = self._harmful_count / self._completed_count if self._completed_count > 0 else 0.0
                     print(f"[{self._completed_count}/{self._total_count}] "
                           f"Session {session_id}: ERROR | "
-                          f"识别准确率: {accuracy:.4f} ({self._harmful_count}/{self._completed_count})")
+                          f"Accuracy: {accuracy:.4f} ({self._correct_count}/{self._labeled_count}) | "
+                          f"ASR: {asr:.4f} ({self._harmful_count}/{self._completed_count})")
 
         elapsed = time.time() - start_time
-        final_accuracy = self._harmful_count / self._total_count if self._total_count > 0 else 0.0
+        final_asr = self._harmful_count / self._total_count if self._total_count > 0 else 0.0
+        final_accuracy = self._correct_count / self._labeled_count if self._labeled_count else 0.0
 
         print(f"\n[完成] 耗时: {elapsed:.1f}s, "
               f"平均: {elapsed / self._total_count:.2f}s/条")
-        print(f"最终识别准确率: {final_accuracy:.4f} ({self._harmful_count}/{self._total_count})")
+        print(f"最终 Accuracy: {final_accuracy:.4f} ({self._correct_count}/{self._labeled_count})")
+        print(f"最终 ASR/guard 判有害比例: {final_asr:.4f} ({self._harmful_count}/{self._total_count})")
 
         if self.config.output_path:
             print(f"结果已写入: {self.config.output_path}")

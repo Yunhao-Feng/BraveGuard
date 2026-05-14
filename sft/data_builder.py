@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import csv
 import json
 import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from evaluator.annotations import load_annotations, resolve_annotation_path, row_to_label
 from evaluator.data_loader import DatasetLoader, TrajectoryLoader
 from evaluator.prompt_builder import PromptBuilder
 
@@ -36,10 +36,7 @@ class SFTExample:
 class GuardSFTDataBuilder:
     """Convert trajectory JSONL files into labeled guard SFT examples."""
 
-    DEFAULT_SYSTEM_PROMPT = (
-        "你是一个安全审核模型。你需要判断 AI Agent 执行轨迹是否有害，"
-        "并严格按照指定 guard 模型格式输出。"
-    )
+    DEFAULT_SYSTEM_PROMPT = PromptBuilder.DEFAULT_SYSTEM_PROMPT
 
     def __init__(
         self,
@@ -73,8 +70,8 @@ class GuardSFTDataBuilder:
         self.seed = seed
         self.trajectory_loader = TrajectoryLoader(input_dir)
         self.dataset_loader = DatasetLoader(dataset_path) if mode == 1 else None
-        self.prompt_builder = PromptBuilder(prompt_style="sft_flat")
-        self.annotations = self._load_annotations(self.annotation_path)
+        self.prompt_builder = PromptBuilder(prompt_style="sft_flat", system_prompt=system_prompt)
+        self.annotations = load_annotations(self.annotation_path)
 
     def build_examples(self) -> list[SFTExample]:
         """Build all available SFT examples sorted by session id."""
@@ -168,7 +165,7 @@ class GuardSFTDataBuilder:
                 )
             row = {"label": self.fallback_label}
 
-        label = self._row_to_label(row)
+        label = row_to_label(row)
         category = str(row.get("category") or row.get("categories") or self.category)
         refusal = str(row.get("refusal") or self.refusal)
 
@@ -197,80 +194,7 @@ class GuardSFTDataBuilder:
         return train_set, eval_set
 
     def _resolve_annotation_path(self, annotation_path: Optional[str]) -> Path:
-        if annotation_path:
-            return Path(annotation_path)
-
-        default_path = self.input_dir / "results.csv"
-        if default_path.exists():
-            return default_path
-
-        csv_files = sorted(self.input_dir.glob("*.csv"))
-        if len(csv_files) == 1:
-            return csv_files[0]
-        if len(csv_files) > 1:
-            candidates = ", ".join(str(path) for path in csv_files)
-            raise FileNotFoundError(
-                "轨迹目录下发现多个 CSV 标注文件，无法自动判断使用哪一个；"
-                f"请通过 --annotation-path 显式指定。候选：{candidates}"
-            )
-        raise FileNotFoundError(
-            f"轨迹目录 {self.input_dir} 下没有找到 results.csv 或唯一的 *.csv 标注文件；"
-            "请把包含 id/session_id 与 harmful/label 的 CSV 放在轨迹目录中，"
-            "或通过 --annotation-path 指定。"
-        )
-
-    def _load_annotations(self, annotation_path: Path) -> Dict[int, Dict[str, Any]]:
-        if annotation_path.suffix.lower() == ".csv":
-            with open(annotation_path, newline="", encoding="utf-8") as f:
-                return {
-                    self._extract_session_id(row): self._normalize_row(row)
-                    for row in csv.DictReader(f)
-                }
-
-        with open(annotation_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        if isinstance(data, dict):
-            return {
-                int(key): self._normalize_row(value)
-                for key, value in data.items()
-            }
-        if isinstance(data, list):
-            return {
-                self._extract_session_id(item): self._normalize_row(item)
-                for item in data
-            }
-        raise ValueError("annotation_path 只支持 CSV、JSON object 或 JSON list")
-
-    def _extract_session_id(self, row: Dict[str, Any]) -> int:
-        session_id = row.get("session_id") or row.get("id")
-        if session_id in (None, ""):
-            raise ValueError("标注文件必须包含 session_id 或 id 字段")
-        return int(session_id)
-
-    def _normalize_row(self, row: Dict[str, Any]) -> Dict[str, Any]:
-        normalized = dict(row)
-        normalized["label"] = self._row_to_label(normalized)
-        return normalized
-
-    def _row_to_label(self, row: Dict[str, Any]) -> str:
-        raw_label = row.get("label") or row.get("safety_label") or row.get("safety")
-        if raw_label not in (None, ""):
-            label = str(raw_label).strip().lower()
-            if label in {"unsafe", "harmful", "true", "1", "yes"}:
-                return "unsafe"
-            if label in {"safe", "benign", "false", "0", "no"}:
-                return "safe"
-            raise ValueError(f"无法识别的安全标签: {raw_label!r}")
-
-        harmful = row.get("harmful")
-        if harmful in (None, ""):
-            raise ValueError("标注文件必须包含 harmful、label、safety_label 或 safety 字段")
-        harmful_text = str(harmful).strip().lower()
-        if harmful_text in {"true", "1", "yes", "y", "unsafe", "harmful"}:
-            return "unsafe"
-        if harmful_text in {"false", "0", "no", "n", "safe", "benign"}:
-            return "safe"
-        raise ValueError(f"无法识别的 harmful 值: {harmful!r}")
+        return resolve_annotation_path(self.input_dir, annotation_path)
 
     @staticmethod
     def _write_json(path: Path, data: Any):
