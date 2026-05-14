@@ -205,7 +205,7 @@ python run_sft.py \
     --input exports \
     --dataset data/subset.json \
     --mode 3 \
-    --model-path Qwen/Qwen3Guard-Gen-8B \
+    --model-path model_cache/qwen3_guard_8b \
     --model-type qwen3 \
     --output-dir sft_runs/qwen3_guard_8b \
     --template qwen3 \

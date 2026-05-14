@@ -63,7 +63,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stage", default="sft")
     parser.add_argument("--cutoff-len", type=int, default=32768)
     parser.add_argument("--epochs", type=float, default=3.0)
-    parser.add_argument("--learning-rate", default="1e-5")
+    parser.add_argument("--learning-rate", type=float, default=1e-5)
     parser.add_argument("--per-device-train-batch-size", type=int, default=1)
     parser.add_argument("--gradient-accumulation-steps", type=int, default=8)
     parser.add_argument("--lora-rank", type=int, default=16)
