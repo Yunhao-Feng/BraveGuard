@@ -18,4 +18,5 @@ class EvalConfig:
     batch_size: int = 32  # batch 推理的批次大小
     model_type: str | None = None  # qwen3 / llama3；None 时从路径自动识别
     prompt_style: str = "sft_flat"  # response_moderation / sft_flat
+    chat_template: str = "auto"  # auto / model / plain; sft_flat 默认用 plain 避免 Guard 原生策略模板误判 USER query
     annotation_path: str | None = None  # None 时自动读取 input_dir/results.csv 或唯一 *.csv

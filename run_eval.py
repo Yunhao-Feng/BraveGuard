@@ -114,6 +114,12 @@ def parse_args() -> argparse.Namespace:
         help="评估 prompt 风格：默认使用与 run_sft.py 数据一致的单轮 sft_flat；也可切回原始 guard response moderation",
     )
     parser.add_argument(
+        "--chat-template",
+        choices=["auto", "model", "plain"],
+        default="auto",
+        help="chat template 来源：sft_flat 默认用 plain Qwen/Llama 聊天模板，避免 Guard tokenizer 原生策略模板继续判断 LAST USER query；response_moderation 默认用 model",
+    )
+    parser.add_argument(
         "--annotation-path",
         type=str,
         help="可选标注 CSV/JSON；默认自动使用轨迹目录下的 results.csv 或唯一 *.csv 来计算 accuracy",
@@ -164,6 +170,7 @@ def run_single_model_eval(
     batch_size: int,
     model_type: str | None = None,
     prompt_style: str = "sft_flat",
+    chat_template: str = "auto",
     annotation_path: str | None = None,
 ):
     """
@@ -192,6 +199,7 @@ def run_single_model_eval(
         batch_size=batch_size,
         model_type=model_type,
         prompt_style=prompt_style,
+        chat_template=chat_template,
         annotation_path=annotation_path,
     )
 
@@ -205,6 +213,7 @@ def run_single_model_eval(
     print(f"[Guard Eval] Tensor Parallel: {config.tensor_parallel}")
     print(f"[Guard Eval] Batch Size: {config.batch_size}")
     print(f"[Guard Eval] Prompt Style: {config.prompt_style}")
+    print(f"[Guard Eval] Chat Template: {config.chat_template}")
     print(f"[Guard Eval] 标注路径: {config.annotation_path or '(自动)'}")
     print("=" * 80)
     print()
@@ -245,6 +254,7 @@ def main():
                 batch_size=args.batch_size,
                 model_type=None if args.model_type == "auto" else args.model_type,
                 prompt_style=args.prompt_style,
+                chat_template=args.chat_template,
                 annotation_path=args.annotation_path,
             )
             print(f"✓ 模型 {extract_model_name(model_path)} 评估完成\n")
