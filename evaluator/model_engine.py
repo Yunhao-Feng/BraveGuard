@@ -12,6 +12,43 @@ from .base_engine import BaseGuardEngine
 logger = logging.getLogger(__name__)
 
 
+def resolve_chat_template_style(config: EvalConfig) -> str:
+    """Resolve chat template source for evaluation.
+
+    Guard tokenizers such as Qwen3Guard may ship a moderation-specific
+    ``chat_template`` that rewrites the task as checking the LAST USER query.
+    That is useful for native response moderation, but it conflicts with the
+    SFT setup where the user message is an instruction to scan an Agent
+    trajectory.  For ``sft_flat`` we therefore default to a plain chat template
+    unless the caller explicitly asks for the model template.
+    """
+    if config.chat_template != "auto":
+        return config.chat_template
+    return "plain" if config.prompt_style == "sft_flat" else "model"
+
+
+def build_plain_chat_prompt(messages: List[Dict[str, str]], model_type: str) -> str:
+    """Build a minimal Qwen/Llama style chat prompt without guard policy injection."""
+    if model_type == "qwen3":
+        prompt = "".join(
+            f"<|im_start|>{message['role']}\n{message['content']}<|im_end|>\n"
+            for message in messages
+        )
+        return prompt + "<|im_start|>assistant\n<think>\n\n</think>\n\n"
+
+    prompt = ""
+    for message in messages:
+        role = message["role"]
+        content = message["content"]
+        if role == "system":
+            prompt += f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{content}<|eot_id|>"
+        else:
+            prompt += f"<|start_header_id|>{role}<|end_header_id|>\n\n{content}<|eot_id|>"
+    if "<|begin_of_text|>" not in prompt:
+        prompt = "<|begin_of_text|>" + prompt
+    return prompt + "<|start_header_id|>assistant<|end_header_id|>\n\n"
+
+
 class Qwen3GuardEngine(BaseGuardEngine):
     """
     基于 vLLM 的 Qwen3Guard 推理引擎。
@@ -61,12 +98,16 @@ class Qwen3GuardEngine(BaseGuardEngine):
         Qwen3Guard 使用标准的 chat template 格式。
         如果 prompt 超过最大长度，会自动截断。
         """
-        text = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,  # 添加生成 prompt 后缀
-            enable_thinking=False,  # Qwen3 reasoning 模板下显式关闭 thinking/no_think 分支
-        )
+        template_style = resolve_chat_template_style(self.config)
+        if template_style == "plain":
+            text = build_plain_chat_prompt(messages, self.model_type)
+        else:
+            text = self.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,  # 添加生成 prompt 后缀
+                enable_thinking=False,  # Qwen3 reasoning 模板下显式关闭 thinking/no_think 分支
+            )
 
         # 检查并截断过长的 prompt
         input_ids = self.tokenizer.encode(text)
@@ -190,11 +231,15 @@ class LlamaGuardEngine(BaseGuardEngine):
 
         LlamaGuard 使用标准的 chat template 格式。
         """
-        text = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,
-        )
+        template_style = resolve_chat_template_style(self.config)
+        if template_style == "plain":
+            text = build_plain_chat_prompt(messages, self.model_type)
+        else:
+            text = self.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
 
         # 检查并截断过长的 prompt
         input_ids = self.tokenizer.encode(text)

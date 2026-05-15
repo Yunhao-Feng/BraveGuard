@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import random
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -113,7 +114,7 @@ class GuardSFTDataBuilder:
         dataset_name: str,
         val_size: float = 0.0,
         balance_labels: str = "none",
-    ) -> Dict[str, Path]:
+    ) -> Dict[str, Any]:
         """Write train/eval JSON files and LLaMA-Factory dataset_info.json.
 
         ``balance_labels`` only changes the training split.  The eval split stays
@@ -159,6 +160,10 @@ class GuardSFTDataBuilder:
             "train_file": train_file,
             "eval_file": eval_file if eval_examples else Path(),
             "dataset_info": info_file,
+            "num_train": len(train_examples),
+            "num_eval": len(eval_examples),
+            "train_label_counts": dict(Counter(e.output for e in train_examples)),
+            "eval_label_counts": dict(Counter(e.output for e in eval_examples)),
         }
 
     def _format_output(self, session_id: int) -> str:

@@ -107,6 +107,7 @@ python run_eval.py \
 | `--batch-size` | — | `32` | batch 推理批次大小 |
 | `--max-new-tokens` | — | `128` | 生成最大 token 数 |
 | `--prompt-style` | — | `sft_flat` | 默认使用与 `run_sft.py` 一致的单轮 prompt；可设为 `response_moderation` 回到原始 guard 格式 |
+| `--chat-template` | — | `auto` | chat template 来源：`sft_flat` 自动使用 `plain`，绕开 Guard tokenizer 原生“LAST USER query”策略模板；`response_moderation` 自动使用 `model` |
 | `--annotation-path` | — | 自动读取 `input/results.csv` | 标注 CSV/JSON，用于按真实标签计算 accuracy |
 
 ### 性能调优
@@ -213,9 +214,16 @@ python run_sft.py \
     --output-dir sft_runs/qwen3_guard_8b \
     --template qwen3 \
     --epochs 3 \
-    --learning-rate 1e-5 \
+    --learning-rate 2e-5 \
+    --warmup-ratio 0.1 \
     --per-device-train-batch-size 1 \
-    --gradient-accumulation-steps 8 \
+    --gradient-accumulation-steps 2 \
+    --lora-rank 32 \
+    --lora-alpha 64 \
+    --balance-labels oversample \
+    --eval-strategy epoch \
+    --save-strategy epoch \
+    --logging-steps 1 \
     --cutoff-len 32768 \
     --export-after-train
 ```
@@ -262,8 +270,19 @@ python run_eval.py \
     --model-paths sft_runs/qwen3_guard_8b/merged \
     --model-type qwen3 \
     --prompt-style sft_flat \
+    --chat-template plain \
     --mode 3 \
     --output-dir guard_sft
 ```
 
-`run_eval.py` 默认使用 `--prompt-style sft_flat`，与 `run_sft.py` 训练数据的单轮判断 prompt 对齐；如果希望继续使用原始 Guard response moderation 方式，可以显式传 `--prompt-style response_moderation`。评估时会默认读取 `exports/results.csv`（或唯一 `*.csv`）中的 `harmful`/`label`，按真实标签计算 `Accuracy`；模型输出只解析 `safe`/`unsafe`（大小写不敏感），解析到 `unsafe` 才会视为 guard 判定该轨迹有害。
+`run_eval.py` 默认使用 `--prompt-style sft_flat`，与 `run_sft.py` 训练数据的单轮判断 prompt 对齐；该模式下 `--chat-template auto` 会选择 `plain` 模板，避免 Qwen3Guard/LlamaGuard tokenizer 自带的原生审核模板把任务重新改写成“判断最后一个 USER query 是否违禁”。如果希望继续使用原始 Guard response moderation 方式，可以显式传 `--prompt-style response_moderation --chat-template model`。评估时会默认读取 `exports/results.csv`（或唯一 `*.csv`）中的 `harmful`/`label`，按真实标签计算 `Accuracy`；模型输出只解析 `safe`/`unsafe`（大小写不敏感），解析到 `unsafe` 才会视为 guard 判定该轨迹有害。
+
+
+### 8.5 当前 SFT 结果的排查结论
+
+如果微调后 accuracy 只从基础 Guard 的约 12% 提升到约 17%，优先检查两类问题：
+
+1. **chat template 错位**：Qwen3Guard tokenizer 可能自带审核模板，会把输入包装成“判断最后一个 USER query 是否包含 prohibited content”。这与本项目的真实目标不同：我们要扫描 Agent 执行轨迹的动作是否会导致有害结果。因此 SFT/eval 应使用 `sft_flat` prompt，并在评估时使用 `--chat-template plain`。
+2. **训练 update 太少**：已有 `adapter/trainer_log.jsonl` 只记录到 12 个 optimizer step，训练 loss 仍约 2，最后才做一次 eval；这通常不足以让 LoRA 学会新任务定义。推荐降低 `--gradient-accumulation-steps`、增加 `--epochs`，并使用 `--eval-strategy epoch --save-strategy epoch --logging-steps 1` 观察每个 epoch 的曲线与最佳 checkpoint。
+
+`run_sft.py` 会在生成数据后打印训练/验证标签分布与粗略 optimizer step 估计；若预计 update 少于 50 步，会给出欠拟合警告。

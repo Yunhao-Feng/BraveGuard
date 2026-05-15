@@ -127,6 +127,14 @@ def main() -> int:
 
     print(f"[SFT] 模型类型: {model_type}")
     print(f"[SFT] 数据目录: {dataset_files['dataset_dir']}")
+    print(f"[SFT] 训练样本: {dataset_files['num_train']} {dataset_files['train_label_counts']}")
+    print(f"[SFT] 验证样本: {dataset_files['num_eval']} {dataset_files['eval_label_counts']}")
+    estimated_steps = estimate_optimizer_steps(dataset_files['num_train'], args)
+    if estimated_steps < 50:
+        print(
+            f"[SFT][WARN] 预计 optimizer update 只有 {estimated_steps} 步；"
+            "小数据 + 大 gradient_accumulation 容易欠拟合。建议降低 --gradient-accumulation-steps 或增加 --epochs。"
+        )
     print(f"[SFT] 训练配置: {config_path}")
     if args.finetuning_type == "lora":
         print(f"[SFT] LoRA 合并导出配置: {export_config_path}")
@@ -154,6 +162,15 @@ def main() -> int:
     export_command = [args.llamafactory_cli, "export", str(export_config_path)]
     print("[SFT] 合并 LoRA:", " ".join(export_command))
     return subprocess.run(export_command, check=False).returncode
+
+
+def estimate_optimizer_steps(num_train_examples: int, args: argparse.Namespace) -> int:
+    """Roughly estimate optimizer updates for non-packed SFT data."""
+    if num_train_examples <= 0:
+        return 0
+    effective_batch = max(1, args.per_device_train_batch_size * args.gradient_accumulation_steps)
+    steps_per_epoch = max(1, (num_train_examples + effective_batch - 1) // effective_batch)
+    return max(1, int(steps_per_epoch * args.epochs))
 
 
 def build_train_config(args: argparse.Namespace, model_type: str, template: str, data_dir: Path) -> Dict[str, Any]:
