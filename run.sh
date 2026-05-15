@@ -20,7 +20,7 @@ python run_sft.py \
     --model-type qwen3 \
     --output-dir sft_runs/qwen3_guard_8b \
     --template qwen3 \
-    --epochs 30 \
+    --epochs 3 \
     --learning-rate 1e-5 \
     --per-device-train-batch-size 1 \
     --gradient-accumulation-steps 8 \

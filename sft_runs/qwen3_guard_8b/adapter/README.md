@@ -22,8 +22,8 @@ should probably proofread and complete it, then remove this comment. -->
 
 This model is a fine-tuned version of [model_cache/qwen3_guard_8b](https://huggingface.co/model_cache/qwen3_guard_8b) on the braveguard_sft dataset.
 It achieves the following results on the evaluation set:
-- Loss: 0.5009
-- Accuracy: 0.9131
+- Loss: 1.1039
+- Accuracy: 0.75
 
 ## Model description
 
@@ -54,15 +54,13 @@ The following hyperparameters were used during training:
 - optimizer: Use OptimizerNames.ADAMW_TORCH_FUSED with betas=(0.9,0.999) and epsilon=1e-08 and optimizer_args=No additional optimizer arguments
 - lr_scheduler_type: cosine
 - lr_scheduler_warmup_steps: 0.03
-- num_epochs: 30.0
+- num_epochs: 3.0
 
 ### Training results
 
-| Training Loss | Epoch   | Step | Validation Loss | Accuracy |
-|:-------------:|:-------:|:----:|:---------------:|:--------:|
-| 1.3500        | 12.5333 | 50   | 1.0040          | 0.7908   |
-| 0.6877        | 25.0    | 100  | 0.5076          | 0.9112   |
-| 0.6534        | 30.0    | 120  | 0.5009          | 0.9131   |
+| Training Loss | Epoch | Step | Validation Loss | Accuracy |
+|:-------------:|:-----:|:----:|:---------------:|:--------:|
+| 2.0337        | 3.0   | 12   | 1.1039          | 0.75     |
 
 
 ### Framework versions
