@@ -6,8 +6,8 @@
 
 ### 支持的模型
 
-- **Qwen3Guard-8B / 4B**: 输出结构化的安全评估（Safety/Categories/Refusal）
-- **LlamaGuard-8B**: 输出简单的 safe/unsafe 判断
+- **Qwen3Guard-8B / 4B**: 输出二分类 safe/unsafe 判断
+- **LlamaGuard-8B**: 输出二分类 safe/unsafe 判断
 
 系统会根据模型路径自动识别模型类型。
 
@@ -122,29 +122,28 @@ python run_eval.py \
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `session_id` | int | 轨迹 ID |
-| `harmful` | bool | guard 是否判为有害（Unsafe/Controversial 视为有害） |
+| `harmful` | bool | guard 是否判为有害（解析到 `unsafe` 时为有害） |
 | `expected_harmful` | bool | 标注文件中的真实有害性；无标注为空 |
 | `correct` | bool | `harmful` 是否匹配 `expected_harmful`；无标注为空 |
-| `safety_label` | str | Safe / Unsafe / Controversial |
-| `categories` | str | 风险类别（逗号分隔）|
-| `refusal` | str | 是否拒绝（Qwen3Guard 独有）|
+| `safety_label` | str | `safe` / `unsafe`（解析大小写不敏感，CSV 中规范化为小写） |
 | `raw_output` | str | 模型原始输出 |
 | `error` | str | 解析错误信息 |
 
-### 模型输出差异
+### 模型输出格式
 
-**Qwen3Guard**:
-```
-Safety: Unsafe
-Categories: Non-violent Illegal Acts
-Refusal: No
-```
+Qwen3Guard 和 LlamaGuard 评估时都按二分类解析，只需要输出：
 
-**LlamaGuard**:
-```
+```text
 unsafe
-S1
 ```
+
+或：
+
+```text
+safe
+```
+
+解析器大小写不敏感，并兼容旧式 `Safety: Safe` / `Safety: Unsafe` 前缀；其他类别、Refusal 或解释文本不会写入 CSV。
 
 ## 6. 结果分析
 
@@ -221,8 +220,8 @@ python run_sft.py \
     --export-after-train
 ```
 
-- Qwen3Guard 样本会根据 CSV 中每条轨迹的 `harmful`/`label` 输出 `Safety: Unsafe` 或 `Safety: Safe`；unsafe 样本的 `Categories` 优先使用 CSV 的 `category/categories` 字段。
-- LlamaGuard 样本输出格式为：`unsafe` 或 `safe`；使用 `--model-type llama3 --template llama3`。
+- Qwen3Guard 和 LlamaGuard 样本都会根据 CSV 中每条轨迹的 `harmful`/`label` 输出二分类标签：`unsafe` 或 `safe`；不再训练 `Categories`/`Refusal`。
+- LlamaGuard 使用 `--model-type llama3 --template llama3`。
 - `--export-after-train` 会在 LoRA 训练成功后执行 `llamafactory-cli export sft_runs/.../export.yaml`，默认把完整模型合并到 `sft_runs/.../merged`，便于 vLLM 和 `run_eval.py` 直接加载。
 - Qwen3 模板默认写入 `enable_thinking: false`，以关闭 reasoning/thinking 分支，避免 SFT 过程中出现 think/no_think 模板不一致问题；如确实需要 reasoning 模板，可传 `--enable-thinking`。
 
@@ -239,17 +238,17 @@ id,harmful,score,reason,category
 也支持显式 label 格式：
 
 ```csv
-session_id,label,category,refusal
-9,unsafe,Jailbreak,No
-18,safe,None,No
+session_id,label
+9,unsafe
+18,safe
 ```
 
 JSON 示例：
 
 ```json
 {
-  "9": {"label": "unsafe", "category": "Jailbreak", "refusal": "No"},
-  "18": {"label": "safe", "category": "None", "refusal": "No"}
+  "9": {"label": "unsafe"},
+  "18": {"label": "safe"}
 }
 ```
 
@@ -267,4 +266,4 @@ python run_eval.py \
     --output-dir guard_sft
 ```
 
-`run_eval.py` 默认使用 `--prompt-style sft_flat`，与 `run_sft.py` 训练数据的单轮判断 prompt 对齐；如果希望继续使用原始 Guard response moderation 方式，可以显式传 `--prompt-style response_moderation`。评估时会默认读取 `exports/results.csv`（或唯一 `*.csv`）中的 `harmful`/`label`，按真实标签计算 `Accuracy`；`Unsafe` 和 `Controversial`（大小写不敏感）都会视为 guard 判定该轨迹有害。
+`run_eval.py` 默认使用 `--prompt-style sft_flat`，与 `run_sft.py` 训练数据的单轮判断 prompt 对齐；如果希望继续使用原始 Guard response moderation 方式，可以显式传 `--prompt-style response_moderation`。评估时会默认读取 `exports/results.csv`（或唯一 `*.csv`）中的 `harmful`/`label`，按真实标签计算 `Accuracy`；模型输出只解析 `safe`/`unsafe`（大小写不敏感），解析到 `unsafe` 才会视为 guard 判定该轨迹有害。

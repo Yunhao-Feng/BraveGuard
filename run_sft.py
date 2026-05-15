@@ -51,8 +51,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset-name", default="braveguard_sft", help="LLaMA-Factory dataset 名称")
     parser.add_argument("--annotation-path", help="可选标注 CSV/JSON；默认自动使用轨迹目录下的 results.csv 或唯一 *.csv")
     parser.add_argument("--fallback-label", choices=["safe", "unsafe"], help="仅当某条轨迹缺少标注时使用的兜底标签；默认不兜底并报错")
-    parser.add_argument("--category", default="Jailbreak", help="Qwen3Guard Unsafe 样本默认 Categories")
-    parser.add_argument("--refusal", choices=["Yes", "No"], default="No", help="Qwen3Guard 默认 Refusal 字段")
+    parser.add_argument("--category", default="Jailbreak", help="已废弃：二分类 SFT 不再输出 Categories，仅为兼容旧命令保留")
+    parser.add_argument("--refusal", choices=["Yes", "No"], default="No", help="已废弃：二分类 SFT 不再输出 Refusal，仅为兼容旧命令保留")
     parser.add_argument("--val-size", type=float, default=0.1, help="从训练样本切分验证集的比例；设为 0 可关闭 SFT eval")
     parser.add_argument("--seed", type=int, default=42, help="随机种子")
 

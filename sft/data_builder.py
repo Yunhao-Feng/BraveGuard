@@ -166,15 +166,11 @@ class GuardSFTDataBuilder:
             row = {"label": self.fallback_label}
 
         label = row_to_label(row)
-        category = str(row.get("category") or row.get("categories") or self.category)
-        refusal = str(row.get("refusal") or self.refusal)
-
-        if self.model_type == "llama3":
-            return "unsafe" if label == "unsafe" else "safe"
-
-        safety = "Unsafe" if label == "unsafe" else "Safe"
-        category = category if label == "unsafe" else "None"
-        return f"Safety: {safety}\nCategories: {category}\nRefusal: {refusal}"
+        # Train all guard families as a binary classifier.  The evaluator is
+        # case-insensitive, but the canonical SFT target is lowercase and
+        # intentionally excludes Categories/Refusal to avoid Qwen3Guard
+        # falling back to its native multi-label schema.
+        return "unsafe" if label == "unsafe" else "safe"
 
     def _split_examples(
         self,
