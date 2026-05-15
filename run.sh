@@ -14,7 +14,7 @@ python run_sft.py \
     --model-type qwen3 \
     --output-dir sft_runs/qwen3_guard_8b \
     --template qwen3 \
-    --epochs 5 \
+    --epochs 50 \
     --learning-rate 2e-5 \
     --warmup-ratio 0.1 \
     --lr-scheduler-type cosine \
@@ -32,7 +32,7 @@ python run_sft.py \
     --export-after-train
 
 python run_eval.py \
-    --input exports_v8 \
+    --input exports \
     --model-paths sft_runs/qwen3_guard_8b/merged \
     --model-type qwen3 \
     --prompt-style sft_flat \
@@ -41,7 +41,7 @@ python run_eval.py \
     --output-dir guard_sft
 
 python run_eval.py \
-    --input exports_v8 \
+    --input exports \
     --model-paths model_cache/qwen3_guard_8b \
     --model-type qwen3 \
     --prompt-style sft_flat \

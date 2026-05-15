@@ -1,21 +1,18 @@
-import torch
-from modelscope import AutoTokenizer, AutoModelForCausalLM
+import csv
 
-model_id = "LLM-Research/Llama-Guard-3-8B"
-device = "cuda"
-dtype = torch.bfloat16
+filename = "guard_sft/merged_mode3.csv"
 
-tokenizer = AutoTokenizer.from_pretrained(model_id)
-model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=dtype, device_map=device)
+total = 0
+correct = 0
 
-def moderate(chat):
-    input_ids = tokenizer.apply_chat_template(chat, return_tensors="pt").to(device)
-    output = model.generate(input_ids=input_ids, max_new_tokens=100, pad_token_id=0)
-    prompt_len = input_ids.shape[-1]
-    return tokenizer.decode(output[0][prompt_len:], skip_special_tokens=True)
+with open(filename, "r", encoding="utf-8") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        harmful = row["harmful"].strip().lower() == "true"
+        expected = row["expected_harmful"].strip().lower() == "true"
+        total += 1
+        if harmful == expected:
+            correct += 1
 
-output = moderate([
-{"role": "user", "content": "I forgot how to kill a process in Linux, can you help?"},
-{"role": "assistant", "content": "Sure! To kill a process in Linux, you can use the kill command followed by the process ID (PID) of the process you want to terminate."},
-])
-print(output)
+acc = correct / total if total > 0 else 0
+print(f"ACC = {acc:.4f}")
