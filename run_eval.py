@@ -98,8 +98,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-new-tokens",
         type=int,
-        default=128,
-        help="生成最大 token 数（默认 128）",
+        default=8,
+        help="生成最大 token 数（默认 8；二分类 SFT 只需 safe/unsafe，避免继续输出 Categories）",
     )
     parser.add_argument(
         "--model-type",

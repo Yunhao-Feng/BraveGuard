@@ -49,6 +49,7 @@ class Qwen3GuardEngine(BaseGuardEngine):
             max_tokens=self.config.max_new_tokens,
             temperature=0.0,
             top_p=1.0,
+            stop=["\n"],
         )
 
         logger.info("模型加载完成")
@@ -178,6 +179,7 @@ class LlamaGuardEngine(BaseGuardEngine):
             max_tokens=self.config.max_new_tokens,
             temperature=0.0,
             top_p=1.0,
+            stop=["\n"],
         )
 
         logger.info("LlamaGuard 模型加载完成")

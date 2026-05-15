@@ -53,7 +53,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fallback-label", choices=["safe", "unsafe"], help="仅当某条轨迹缺少标注时使用的兜底标签；默认不兜底并报错")
     parser.add_argument("--category", default="Jailbreak", help="已废弃：二分类 SFT 不再输出 Categories，仅为兼容旧命令保留")
     parser.add_argument("--refusal", choices=["Yes", "No"], default="No", help="已废弃：二分类 SFT 不再输出 Refusal，仅为兼容旧命令保留")
-    parser.add_argument("--val-size", type=float, default=0.1, help="从训练样本切分验证集的比例；设为 0 可关闭 SFT eval")
+    parser.add_argument("--val-size", type=float, default=0.15, help="从训练样本分层切分验证集的比例；设为 0 可关闭 SFT eval")
+    parser.add_argument("--balance-labels", choices=["none", "oversample", "undersample"], default="oversample", help="训练集标签不均衡处理；默认上采样少数类，验证集不改动")
     parser.add_argument("--seed", type=int, default=42, help="随机种子")
 
     # LLaMA-Factory training arguments
@@ -66,16 +67,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=1e-5)
     parser.add_argument("--per-device-train-batch-size", type=int, default=1)
     parser.add_argument("--gradient-accumulation-steps", type=int, default=8)
-    parser.add_argument("--lora-rank", type=int, default=16)
-    parser.add_argument("--lora-alpha", type=int, default=32)
+    parser.add_argument("--lora-rank", type=int, default=32)
+    parser.add_argument("--lora-alpha", type=int, default=64)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
     parser.add_argument("--lora-target", default="all")
     parser.add_argument("--bf16", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--gradient-checkpointing", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--logging-steps", type=int, default=5)
     parser.add_argument("--save-steps", type=int, default=100)
-    parser.add_argument("--eval-steps", type=int, default=50, help="有验证集时的 eval 间隔")
+    parser.add_argument("--eval-strategy", choices=["steps", "epoch"], default="epoch", help="有验证集时的 eval 策略；小数据默认每个 epoch 验证")
+    parser.add_argument("--save-strategy", choices=["steps", "epoch"], default="epoch", help="checkpoint 保存策略；默认与小数据 eval 对齐")
+    parser.add_argument("--eval-steps", type=int, default=50, help="eval-strategy=steps 时的 eval 间隔")
+    parser.add_argument("--save-total-limit", type=int, default=2, help="最多保留 checkpoint 数")
     parser.add_argument("--warmup-ratio", type=float, default=0.03)
+    parser.add_argument("--lr-scheduler-type", default="cosine", help="学习率调度器")
     parser.add_argument("--deepspeed", help="可选 DeepSpeed 配置路径")
     parser.add_argument("--enable-thinking", action=argparse.BooleanOptionalAction, default=False, help="Qwen3 reasoning 模板是否启用 thinking；默认关闭以避免 SFT 出现 think/no_think 模板冲突")
     parser.add_argument("--extra-arg", action="append", default=[], help="额外 LLaMA-Factory YAML 参数，格式 key=value，可重复")
@@ -110,6 +115,7 @@ def main() -> int:
         output_dir=str(data_dir),
         dataset_name=args.dataset_name,
         val_size=args.val_size,
+        balance_labels=args.balance_labels,
     )
 
     config = build_train_config(args, model_type, template, data_dir)
@@ -168,10 +174,12 @@ def build_train_config(args: argparse.Namespace, model_type: str, template: str,
         "gradient_accumulation_steps": args.gradient_accumulation_steps,
         "learning_rate": args.learning_rate,
         "num_train_epochs": args.epochs,
-        "lr_scheduler_type": "cosine",
+        "lr_scheduler_type": args.lr_scheduler_type,
         "warmup_ratio": args.warmup_ratio,
         "logging_steps": args.logging_steps,
+        "save_strategy": args.save_strategy,
         "save_steps": args.save_steps,
+        "save_total_limit": args.save_total_limit,
         "plot_loss": True,
         "bf16": args.bf16,
         "gradient_checkpointing": args.gradient_checkpointing,
@@ -186,8 +194,11 @@ def build_train_config(args: argparse.Namespace, model_type: str, template: str,
                 "eval_dataset": f"{args.dataset_name}_eval",
                 "val_size": 0.0,
                 "do_eval": True,
-                "eval_strategy": "steps",
+                "eval_strategy": args.eval_strategy,
                 "eval_steps": args.eval_steps,
+                "load_best_model_at_end": True,
+                "metric_for_best_model": "eval_loss",
+                "greater_is_better": False,
                 "per_device_eval_batch_size": args.per_device_train_batch_size,
                 "compute_accuracy": True,
             }
