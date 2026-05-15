@@ -112,8 +112,13 @@ class GuardSFTDataBuilder:
         output_dir: str,
         dataset_name: str,
         val_size: float = 0.0,
+        balance_labels: str = "none",
     ) -> Dict[str, Path]:
-        """Write train/eval JSON files and LLaMA-Factory dataset_info.json."""
+        """Write train/eval JSON files and LLaMA-Factory dataset_info.json.
+
+        ``balance_labels`` only changes the training split.  The eval split stays
+        untouched so validation metrics still reflect held-out data.
+        """
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
@@ -122,6 +127,7 @@ class GuardSFTDataBuilder:
             raise RuntimeError("没有可用于 SFT 的轨迹样本")
 
         train_examples, eval_examples = self._split_examples(examples, val_size)
+        train_examples = self._balance_examples(train_examples, balance_labels)
         train_file = output_path / f"{dataset_name}.json"
         eval_file = output_path / f"{dataset_name}_eval.json"
         info_file = output_path / "dataset_info.json"
@@ -182,12 +188,57 @@ class GuardSFTDataBuilder:
         if val_size >= 1:
             raise ValueError("val_size 必须小于 1")
 
-        shuffled = examples[:]
-        random.Random(self.seed).shuffle(shuffled)
-        eval_count = max(1, int(len(shuffled) * val_size))
-        eval_set = sorted(shuffled[:eval_count], key=lambda x: x.session_id)
-        train_set = sorted(shuffled[eval_count:], key=lambda x: x.session_id)
-        return train_set, eval_set
+        # Stratify by label so the small held-out split is not accidentally
+        # dominated by one class.  This matters for guard SFT because trajectory
+        # datasets are often heavily skewed toward unsafe examples.
+        rng = random.Random(self.seed)
+        groups: dict[str, list[SFTExample]] = {}
+        for example in examples:
+            groups.setdefault(example.output, []).append(example)
+
+        train_set: list[SFTExample] = []
+        eval_set: list[SFTExample] = []
+        for label_examples in groups.values():
+            shuffled = label_examples[:]
+            rng.shuffle(shuffled)
+            eval_count = max(1, int(len(shuffled) * val_size)) if len(shuffled) > 1 else 0
+            eval_set.extend(shuffled[:eval_count])
+            train_set.extend(shuffled[eval_count:])
+
+        return (
+            sorted(train_set, key=lambda x: x.session_id),
+            sorted(eval_set, key=lambda x: x.session_id),
+        )
+
+    def _balance_examples(self, examples: list[SFTExample], strategy: str) -> list[SFTExample]:
+        if strategy == "none":
+            return examples
+        if strategy not in {"oversample", "undersample"}:
+            raise ValueError("balance_labels 必须是 none、oversample 或 undersample")
+
+        groups: dict[str, list[SFTExample]] = {}
+        for example in examples:
+            groups.setdefault(example.output, []).append(example)
+        if len(groups) <= 1:
+            return examples
+
+        rng = random.Random(self.seed)
+        target = max(len(items) for items in groups.values())
+        if strategy == "undersample":
+            target = min(len(items) for items in groups.values())
+
+        balanced: list[SFTExample] = []
+        for items in groups.values():
+            if strategy == "oversample" and len(items) < target:
+                balanced.extend(items)
+                balanced.extend(rng.choices(items, k=target - len(items)))
+            else:
+                shuffled = items[:]
+                rng.shuffle(shuffled)
+                balanced.extend(shuffled[:target])
+
+        rng.shuffle(balanced)
+        return balanced
 
     def _resolve_annotation_path(self, annotation_path: Optional[str]) -> Path:
         return resolve_annotation_path(self.input_dir, annotation_path)
