@@ -1,0 +1,20 @@
+{
+  "braveguard_sft": {
+    "file_name": "braveguard_sft.json",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "system": "system"
+    }
+  },
+  "braveguard_sft_eval": {
+    "file_name": "braveguard_sft_eval.json",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "system": "system"
+    }
+  }
+}

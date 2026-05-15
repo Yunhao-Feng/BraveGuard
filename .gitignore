@@ -42,4 +42,4 @@ Thumbs.db
 # 临时文件
 *.tmp
 *.bak
-*.orig
+*.origsft_runs/qwen3_guard_8b/adapter/adapter_model.safetensors
