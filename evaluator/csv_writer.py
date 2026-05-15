@@ -17,8 +17,6 @@ CSV_FIELDS = [
     "expected_harmful",
     "correct",
     "safety_label",
-    "categories",
-    "refusal",
     "raw_output",
     "error",
 ]
@@ -45,9 +43,10 @@ class CSVWriter:
             writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
             writer.writeheader()
             for result in sorted_results:
-                row = result.to_dict()
+                raw_row = result.to_dict()
+                row = {field: raw_row.get(field) for field in CSV_FIELDS}
                 # 将 raw_output 中的换行符替换为字面字符串 \n，避免跨行
-                row['raw_output'] = row['raw_output'].replace('\n', '\\n').replace('\r', '\\r')
+                row['raw_output'] = (row['raw_output'] or '').replace('\n', '\\n').replace('\r', '\\r')
                 writer.writerow(row)
 
         logger.info(f"结果已写入: {self.output_path}")
@@ -101,6 +100,7 @@ class CSVWriter:
             with open(self.output_path, "a", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
                 # 将 raw_output 中的换行符替换为字面字符串 \n，避免跨行
-                row = result.to_dict()
-                row['raw_output'] = row['raw_output'].replace('\n', '\\n').replace('\r', '\\r')
+                raw_row = result.to_dict()
+                row = {field: raw_row.get(field) for field in CSV_FIELDS}
+                row['raw_output'] = (row['raw_output'] or '').replace('\n', '\\n').replace('\r', '\\r')
                 writer.writerow(row)

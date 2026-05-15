@@ -10,9 +10,9 @@ class GuardResult:
     """单条评估结果"""
 
     session_id: int
-    safety_label: Optional[str]  # Safe / Unsafe / Controversial
-    categories: Optional[str]  # 逗号分隔的类别
-    refusal: Optional[str]  # Yes / No（仅 response moderation 有）
+    safety_label: Optional[str]  # canonical lowercase: safe / unsafe
+    categories: Optional[str]  # deprecated: binary guard output ignores categories
+    refusal: Optional[str]  # deprecated: binary guard output ignores refusal
     raw_output: str  # 模型原始输出
     harmful: bool  # 基于 safety_label 推导
     expected_harmful: Optional[bool] = None  # 标注中的真实有害性；无标注时为 None
