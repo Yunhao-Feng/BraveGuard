@@ -1,0 +1,59 @@
+# Summary Agent Configuration
+
+# OpenAI API Configuration
+openai:
+  url: "https://idealab.alibaba-inc.com/api/openai/v1"
+  key: "6ebb576b22c615c930b5a7129bdd7a60"
+  model: "qwen3-max"
+  max_retries: 5
+  retry_delay: 3  # seconds, fixed delay (not exponential)
+
+# Search Parameters
+search:
+  max_papers: 100  # default max papers to fetch
+  date_before: "2026-01-01"  # YYYY-MM-DD format
+  keywords_per_batch: 3  # limit keywords per batch to avoid rate limits
+  arxiv_retry: 5
+  arxiv_retry_delay: 2  # seconds
+  arxiv_request_delay: 3  # seconds between requests
+  dblp_retry: 5
+  dblp_retry_delay: 2  # seconds
+  dblp_request_delay: 2  # seconds between requests
+
+# Initial Keywords for Computer Used Agents (CUA) Risk
+# Use broader, simpler terms that are more likely to get results
+initial_keywords:
+  - "LLM agent security"
+  - "AI agent safety"
+  - "prompt injection"
+  - "jailbreak attack"
+  - "LLM vulnerability"
+  - "agent attack"
+  - "code generation security"
+  - "AI safety"
+  - "adversarial prompt"
+  - "LLM robustness"
+  - "autonomous agent"
+  - "tool use LLM"
+  - "agent alignment"
+  - "red team LLM"
+  - "prompt attack"
+
+# Keyword expansion settings
+keyword_expansion:
+  max_keywords: 50
+  min_relevance_score: 0.6  # minimum relevance score to keep keyword
+  expansion_frequency: 10  # expand keywords after every N papers
+
+# Taxonomy settings
+taxonomy:
+  min_category_confidence: 0.7
+  expansion_frequency: 20  # expand taxonomy after every N papers
+  output_file: "taxonomy.txt"
+
+# Output settings
+output:
+  directory: "summary_output"
+  papers_log: "papers_analyzed.jsonl"
+  keywords_log: "keywords_history.jsonl"
+  taxonomy_log: "taxonomy_history.jsonl"

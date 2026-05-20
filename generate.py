@@ -51,11 +51,14 @@ attack_method_list = [
     "Implicit_Indirect_Injection", "Logical_Dependency_Inversion",
     "Legacy_Code_Maintenance"
 ]
-sample_length = 5
+sample_length = 3
+
+result_dir = "CodingSafetyBench"
+# ===== 统一预定义结束 =====
 
 
 MODEL = "qwen3-coder-plus"
-config = load_config_as_namespace("config/config.yaml")
+config = load_config_as_namespace("config/generate.yaml")
 client = OpenAI(
     base_url=config.openai.url,
     api_key=config.openai.key,
@@ -231,14 +234,14 @@ comment
 
 
 import os
-result_dir = "CodingSafetyBench"
+
 os.makedirs(result_dir, exist_ok=True)
 for category in category_list:
     for attack_method in attack_method_list:
         index = 0
         while index < 3:
             try:
-                with open("CodingSafetyBench/mores.json", "r", encoding="utf-8") as f:
+                with open(f"{result_dir}/generate.json", "r", encoding="utf-8") as f:
                     examples = json.load(f)
                 placeholders = [
                     {"id": i, "category": category, "jailbreak_method": attack_method, "query": "???", "decomposed_query": "???", "comment": "???"}
@@ -253,7 +256,7 @@ for category in category_list:
                 r3 = ask(prompt_v3)
                 result = extract_json_list(r3)
                 examples.extend(result[3:])
-                with open("CodingSafetyBench/mores.json", "w", encoding="utf-8") as f:
+                with open(f"{result_dir}/generate.json", "w", encoding="utf-8") as f:
                     json.dump(examples, f, ensure_ascii=False, indent=2)
                 index += 1
 

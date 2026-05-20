@@ -1,8 +1,0 @@
-model_name_or_path: "model_cache/qwen3_guard_8b"
-adapter_name_or_path: "sft_runs/qwen3_guard_8b/adapter/checkpoint-275"
-template: "qwen3"
-finetuning_type: "lora"
-export_dir: "sft_runs/qwen3_guard_8b/merged"
-export_size: 5
-export_device: "cpu"
-export_legacy_format: false

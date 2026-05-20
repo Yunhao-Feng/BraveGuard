@@ -1,3 +1,6 @@
+python generate.py 
+
+python rock_runner.py
 conda activate /home/admin/.conda/envs/braveguard
 export PATH=/home/admin/.conda/envs/braveguard/bin:$PATH
 
@@ -7,7 +10,7 @@ export PATH=/home/admin/.conda/envs/braveguard/bin:$PATH
 # 2) 之前 trainer_log 只有 12 个 optimizer update，loss 仍在 2 左右，属于明显欠拟合；
 #    因此降低 gradient_accumulation、增加 epoch，并用 epoch 级 eval/save 选择最佳 checkpoint。
 python run_sft.py \
-    --input exports_v8 \
+    --input exports \
     --dataset data/subset.json \
     --mode 3 \
     --model-path model_cache/qwen3_guard_8b \
@@ -32,7 +35,7 @@ python run_sft.py \
     --export-after-train
 
 python run_eval.py \
-    --input exports \
+    --input exports_test \
     --model-paths sft_runs/qwen3_guard_8b/merged \
     --model-type qwen3 \
     --prompt-style sft_flat \
@@ -41,10 +44,14 @@ python run_eval.py \
     --output-dir guard_sft
 
 python run_eval.py \
-    --input exports \
+    --input exports_test \
     --model-paths model_cache/qwen3_guard_8b \
     --model-type qwen3 \
     --prompt-style sft_flat \
     --chat-template plain \
     --mode 3 \
     --output-dir guard
+
+
+nohup bash rollout.sh >> rollout.txt 2>&1 &
+635866

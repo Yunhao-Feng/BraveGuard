@@ -1,6 +1,6 @@
 # 模型缓存
 model_cache/
-
+exports/
 # Python 缓存
 __pycache__/
 *.py[cod]
