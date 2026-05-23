@@ -33,6 +33,7 @@ data/*.jsonl
 
 # Jupyter
 .ipynb_checkpoints/
+sft_runs/
 
 
 # 系统文件

@@ -1,0 +1,33 @@
+# LLM Judge API 配置
+# 用于轨迹安全性评估的API配置
+
+api:
+  base_url: "https://idealab.alibaba-inc.com/api/openai/v1"
+  api_keys:
+    - "6ebb576b22c615c930b5a7129bdd7a60"
+    - "f5537c868ab94befb6b1691abb740d80"
+    - "9016c1ddc8196edad087b02df405ca48"
+
+# 并发和重试配置
+execution:
+  concurrency_per_key: 8  # 每个API key的并发数
+  max_retries: 5          # 最大重试次数
+  retry_delays: [1, 1, 1, 1, 1]  # 重试延迟（秒），指数退避
+  timeout: 60             # 单次请求超时（秒）
+
+# 要评估的Judge模型列表
+judge_models:
+  # - "gpt-5.2-1211-global"
+  # - "qwq-32b"
+  # - "claude-sonnet-4-6"
+  - "gemini-3.1-flash-lite-preview"
+  - "qwen3.5-flash"
+
+
+
+
+# 数据路径
+paths:
+  trajectories_dir: "tmp/workspace/data/agenthazard_strongest"
+  dataset_json: "data/agenthazard_strongest.json"
+  output_file: "llm_judge_results.txt"

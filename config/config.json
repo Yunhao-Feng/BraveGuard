@@ -24,7 +24,7 @@
     "timeout": 900
   },
   "paths": {
-    "dataset": "data/subset.json",
+    "dataset": "data/epoch2.json",
     "exports_dir": "exports",
     "results_csv": "exports/results.csv",
     "openclaw_config": "config/openclaw.json"

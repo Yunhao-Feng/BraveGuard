@@ -34,6 +34,109 @@ python run_sft.py \
     --cutoff-len 16000 \
     --export-after-train
 
+
+python run_sft.py \
+    --input exports \
+    --dataset data/subset.json \
+    --mode 3 \
+    --model-path sft_runs/qwen3_guard_8b/merged \
+    --model-type qwen3 \
+    --output-dir sft_runs/qwen3_guard_8b_aug \
+    --template qwen3 \
+    --epochs 50 \
+    --learning-rate 2e-5 \
+    --warmup-ratio 0.1 \
+    --lr-scheduler-type cosine \
+    --per-device-train-batch-size 1 \
+    --gradient-accumulation-steps 2 \
+    --lora-rank 32 \
+    --lora-alpha 64 \
+    --lora-dropout 0.05 \
+    --balance-labels oversample \
+    --eval-strategy epoch \
+    --save-strategy epoch \
+    --save-total-limit 2 \
+    --logging-steps 1 \
+    --cutoff-len 16000 \
+    --export-after-train
+
+nohup python run_sft.py \
+    --input exports \
+    --dataset data/subset.json \
+    --mode 3 \
+    --model-path model_cache/qwen3_guard_8b \
+    --model-type qwen3 \
+    --output-dir sft_runs/qwen3_guard_8b \
+    --template qwen3 \
+    --epochs 50 \
+    --learning-rate 2e-5 \
+    --warmup-ratio 0.1 \
+    --lr-scheduler-type cosine \
+    --per-device-train-batch-size 1 \
+    --gradient-accumulation-steps 2 \
+    --lora-rank 32 \
+    --lora-alpha 64 \
+    --lora-dropout 0.05 \
+    --balance-labels oversample \
+    --eval-strategy epoch \
+    --save-strategy epoch \
+    --save-total-limit 2 \
+    --logging-steps 1 \
+    --cutoff-len 16000 \
+    --export-after-train > train.txt 2>&1 &
+
+
+nohup python run_sft.py \
+    --input exports \
+    --dataset data/subset.json \
+    --mode 3 \
+    --model-path model_cache/qwen3_guard_4b \
+    --model-type qwen3 \
+    --output-dir sft_runs/qwen3_guard_4b \
+    --template qwen3 \
+    --epochs 50 \
+    --learning-rate 2e-5 \
+    --warmup-ratio 0.1 \
+    --lr-scheduler-type cosine \
+    --per-device-train-batch-size 1 \
+    --gradient-accumulation-steps 2 \
+    --lora-rank 32 \
+    --lora-alpha 64 \
+    --lora-dropout 0.05 \
+    --balance-labels oversample \
+    --eval-strategy epoch \
+    --save-strategy epoch \
+    --save-total-limit 2 \
+    --logging-steps 1 \
+    --cutoff-len 16000 \
+    --export-after-train > train.txt 2>&1 &
+
+nohup python run_sft.py \
+    --input exports \
+    --dataset data/subset.json \
+    --mode 3 \
+    --model-path model_cache/llama3-guard-8B \
+    --model-type llama3 \
+    --output-dir sft_runs/llama3_guard_8b \
+    --template llama3 \
+    --epochs 50 \
+    --learning-rate 2e-5 \
+    --warmup-ratio 0.1 \
+    --lr-scheduler-type cosine \
+    --per-device-train-batch-size 1 \
+    --gradient-accumulation-steps 2 \
+    --lora-rank 32 \
+    --lora-alpha 64 \
+    --lora-dropout 0.05 \
+    --balance-labels oversample \
+    --eval-strategy epoch \
+    --save-strategy epoch \
+    --save-total-limit 2 \
+    --logging-steps 1 \
+    --cutoff-len 16000 \
+    --export-after-train > train.txt 2>&1 &
+
+
 python run_eval.py \
     --input exports_test \
     --model-paths sft_runs/qwen3_guard_8b/merged \
@@ -55,3 +158,5 @@ python run_eval.py \
 
 nohup bash rollout.sh >> rollout.txt 2>&1 &
 635866
+
+llamafactory-cli export sft_runs/qwen3_guard_8b_aug/export.yaml

@@ -1,3 +1,3 @@
 #模型下载
 from modelscope import snapshot_download
-model_dir = snapshot_download('LLM-Research/Llama-Guard-3-8B', local_dir="model_cache/llama3-guard-8B")
+model_dir = snapshot_download('Shanghai_AI_Laboratory/AgentDoG-Qwen2.5-7B', local_dir="model_cache/AgentDoG-Qwen2.5-7B")
