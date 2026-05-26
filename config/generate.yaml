@@ -1,3 +1,3 @@
 openai:
-  url: "https://idealab.alibaba-inc.com/api/openai/v1"
-  key: "6ebb576b22c615c930b5a7129bdd7a60"
+  url: "https://your-api-endpoint.example.com/v1"
+  key: "YOUR_API_KEY"

@@ -17,15 +17,15 @@
   "models": {
     "mode": "merge",
     "providers": {
-      "Idealab": {
-        "baseUrl": "https://idealab.alibaba-inc.com/api/openai/v1",
-        "apiKey": "6ebb576b22c615c930b5a7129bdd7a60",
+      "DefaultProvider": {
+        "baseUrl": "https://your-api-endpoint.example.com/v1",
+        "apiKey": "YOUR_PROVIDER_API_KEY",
         "api": "openai-completions",
         "authHeader": true,
         "models": [
           {
-            "id": "claude_sonnet4_5",
-            "name": "claude_sonnet4_5",
+            "id": "your_model_id",
+            "name": "your_model_name",
             "api": "openai-completions",
             "reasoning": false,
             "input": [
@@ -50,7 +50,7 @@
   "agents": {
     "defaults": {
       "model": {
-        "primary": "Idealab/claude_sonnet4_5"
+        "primary": "DefaultProvider/your_model_id"
       },
       "workspace": "/root/.openclaw/workspace",
       "compaction": {
@@ -92,7 +92,7 @@
     },
     "auth": {
       "mode": "token",
-      "token": "d04ad18452e4a5e594bfc15feb3b799d9630a06986188b"
+      "token": "YOUR_GATEWAY_TOKEN"
     },
     "tailscale": {
       "mode": "off",
