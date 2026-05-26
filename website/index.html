@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BraveGuard — Trajectory Safety Evaluation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <nav class="nav container">
+      <div class="brand">BraveGuard</div>
+      <a class="btn btn-ghost" href="../README.md">Docs</a>
+    </nav>
+
+    <div class="container hero-content">
+      <p class="eyebrow">Trajectory-level AI Safety</p>
+      <h1>Evaluate Guard Models on Real Agent Behavior</h1>
+      <p class="subtitle">
+        BraveGuard benchmarks safety decisions over multi-step agent trajectories,
+        not just single prompts. Build safer autonomous systems with rigorous, reproducible evaluation.
+      </p>
+      <div class="actions">
+        <a class="btn btn-primary" href="../README.md">Get Started</a>
+        <a class="btn btn-ghost" href="#features">Explore Features</a>
+      </div>
+    </div>
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+  </header>
+
+  <main>
+    <section id="features" class="section container cards">
+      <article class="card">
+        <h3>Trajectory-Centric</h3>
+        <p>Analyze full action traces with tool calls, intermediate reasoning, and outcomes.</p>
+      </article>
+      <article class="card">
+        <h3>Multi-Mode Evaluation</h3>
+        <p>Run controlled experiments with three prompt modes to test robustness and realism.</p>
+      </article>
+      <article class="card">
+        <h3>Research-Ready Pipeline</h3>
+        <p>Generate, evaluate, parse, and compare guard outputs with consistent scripts and formats.</p>
+      </article>
+    </section>
+
+    <section class="section alt">
+      <div class="container split">
+        <div>
+          <h2>From generation to guard benchmarking</h2>
+          <p>
+            BraveGuard unifies agent trajectory generation, guard-model inference, and result analysis.
+            It supports both local and OpenClaw-style backends, making large-scale safety experiments easier to reproduce.
+          </p>
+        </div>
+        <div class="codeblock">
+<pre><code>python generate.py
+python run_eval.py --mode 3 --output-dir results</code></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>BraveGuard © 2026 · Research codebase for trajectory safety evaluation.</p>
+      <p class="muted">Paper submission project (no venue acceptance claim).</p>
+    </div>
+  </footer>
+</body>
+</html>
