@@ -3,106 +3,178 @@
 
 # BraveGuard
 
-**From Open-World Threats to Safer Computer-Use Agents**
-
+### From Open-World Threats to Safer Computer-Use Agents
 [![arXiv](https://img.shields.io/badge/arXiv-2606.01166-b31b1b.svg)](https://arxiv.org/abs/2606.01166)
+[![Hugging Face](https://img.shields.io/badge/HuggingFace-BraveGuard-yellow)](https://huggingface.co/Yunhao-Feng/BraveGuard)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#license)
 
 </div>
 
-BraveGuard is a research framework for **trajectory-level safety evaluation and training of guard models for computer-use agents**. It focuses on a harder setting than single-turn moderation: deciding whether a full multi-step agent trajectory is safe or unsafe, including tool calls, intermediate reasoning traces, and side effects.
+BraveGuard is a research framework for **trajectory-level safety evaluation and guard model training for computer-use agents**.
 
-> Note: this repository corresponds to the public arXiv paper [BraveGuard: From Open-World Threats to Safer Computer-Use Agents](https://arxiv.org/abs/2606.01166).
+Unlike conventional moderation systems that operate on isolated prompts or responses, BraveGuard focuses on the more realistic and challenging setting of **multi-step agent trajectories**, where risks emerge through sequences of actions, tool interactions, intermediate reasoning, and accumulated side effects.
 
-## Why BraveGuard
+> 📄 Paper: **BraveGuard: From Open-World Threats to Safer Computer-Use Agents**  
+> https://arxiv.org/abs/2606.01166
 
-Most guard models are trained and evaluated on user prompts or model responses. In real agent deployments, risk emerges across a sequence of actions. BraveGuard provides:
+---
 
-- **Trajectory generation pipeline** with realistic task execution and attack pressure.
-- **Unified guard evaluation engine** for multiple guard families.
-- **Three evaluation modes** that vary how much metadata is available to the guard.
-- **SFT data construction utilities** to improve trajectory-aware guard behavior.
-- **Self-evolving defense loop** that mines open-world threat signals, synthesizes executable tasks, collects rollouts, labels trajectories, and expands training data from hard cases.
+## 🤗 Model Release
 
-## Method Overview
+We release the BraveGuard guard models on Hugging Face:
 
-BraveGuard converts open-world threat knowledge into trajectory-level supervision for computer-use agents. It mines emerging risks from open research sources, instantiates them as executable tasks, collects OpenClaw execution trajectories, annotates them with safety labels and rationales, and trains guard models. Hard cases and newly discovered threats are fed back into the next round, forming a self-evolving defense loop.
+| Model | Link |
+|---------|---------|
+| BraveGuard | https://huggingface.co/Yunhao-Feng/BraveGuard |
+
+The released model is trained using the BraveGuard self-evolving defense framework and is designed for trajectory-level safety assessment of computer-use agents.
+
+---
+
+## ✨ Key Features
+
+BraveGuard provides a complete pipeline for building and evaluating trajectory-aware guard models:
+
+- **Open-world threat mining** from emerging security and safety sources.
+- **Executable task synthesis** that converts threat knowledge into realistic agent tasks.
+- **Trajectory generation pipeline** with real agent execution and attack pressure.
+- **Unified evaluation framework** supporting multiple guard model families.
+- **Trajectory-aware SFT data construction** for safety alignment.
+- **Self-evolving defense loop** that continuously discovers new threats, collects failures, and improves guard capabilities.
+
+---
+
+## Overview
+
+BraveGuard transforms open-world threat intelligence into trajectory-level supervision for computer-use agents.
+
+The framework continuously:
+
+1. Mines emerging threats from public sources.
+2. Converts threats into executable attack tasks.
+3. Collects agent trajectories using OpenClaw.
+4. Annotates trajectories with safety labels and rationales.
+5. Trains trajectory-aware guard models.
+6. Feeds hard cases back into the next training cycle.
+
+This creates a **self-evolving defense loop** that adapts to newly emerging risks over time.
 
 <p align="center">
   <img src="assets/braveguard_method.png" alt="Overview of the BraveGuard self-evolving defense loop" width="900" />
 </p>
 
-## Results Snapshot
+---
 
-The paper reports that BraveGuard substantially improves trajectory-level safety detection on AgentHazard-Strongest. Under the GPT-5.5 OpenClaw backend, BraveGuard-trained guards outperform trajectory-aware AgentDoG baselines, while on ATBench-500 BraveGuard remains competitive despite being evaluated on ATBench's native trajectory format rather than OpenClaw rollouts.
+## 📊 Main Results
 
-| Benchmark / Setting | Model | Acc. (%) | Rec. (%) | F1 (%) |
-| --- | --- | ---: | ---: | ---: |
-| AgentHazard-Strongest, GPT-5.5 backend | AgentDoG-Llama3.1-8B | 64.26 | 58.97 | 70.99 |
-| AgentHazard-Strongest, GPT-5.5 backend | AgentDoG-Qwen2.5-7B | 65.02 | 60.51 | 71.95 |
-| AgentHazard-Strongest, GPT-5.5 backend | BraveGuard-Llama-Guard-8B | 82.51 | 92.82 | 88.73 |
-| AgentHazard-Strongest, GPT-5.5 backend | BraveGuard-Qwen3-Guard-8B | **83.65** | 91.28 | **89.22** |
-| AgentHazard-Strongest, GPT-5.5 backend | BraveGuard-Qwen3-Guard-4B | 80.99 | 88.72 | 87.37 |
-| ATBench-500, native ATBench format | AgentDoG-Qwen2.5-7B | **87.40** | 95.60 | 88.40 |
-| ATBench-500, native ATBench format | AgentDoG-Llama3.1-8B | 87.60 | **98.40** | **88.80** |
-| ATBench-500, native ATBench format | BraveGuard-Qwen3-Guard-8B | 86.40 | 95.20 | 86.10 |
+BraveGuard significantly improves trajectory-level safety detection on challenging computer-use agent benchmarks.
 
-Additional headline numbers from the paper:
+### AgentHazard-Strongest (GPT-5.5 + OpenClaw)
 
-- On AgentHazard, averaged off-the-shelf guard accuracy increases from **38.79%** to **82.38%** under the averaged guard-model setting.
-- The synthesized BraveGuard task pool contains **7,308 tasks**, covering **28 risk categories** and **32 attack methods**, with a mean of **3.36 decomposed steps per task**.
+| Model | Acc. (%) | Rec. (%) | F1 (%) |
+| --- | ---: | ---: | ---: |
+| AgentDoG-Llama3.1-8B | 64.26 | 58.97 | 70.99 |
+| AgentDoG-Qwen2.5-7B | 65.02 | 60.51 | 71.95 |
+| BraveGuard-Llama-Guard-8B | 82.51 | 92.82 | 88.73 |
+| BraveGuard-Qwen3-Guard-8B | **83.65** | 91.28 | **89.22** |
+| BraveGuard-Qwen3-Guard-4B | 80.99 | 88.72 | 87.37 |
 
-## Visualizations
+### ATBench-500
 
-Category-wise results show that BraveGuard is strong across most AgentHazard-Strongest categories and more uniform across ATBench-500 categories, with harder cases such as data exfiltration and compliance bypass remaining important future work.
+| Model | Acc. (%) | Rec. (%) | F1 (%) |
+| --- | ---: | ---: | ---: |
+| AgentDoG-Qwen2.5-7B | **87.40** | 95.60 | 88.40 |
+| AgentDoG-Llama3.1-8B | 87.60 | **98.40** | **88.80** |
+| BraveGuard-Qwen3-Guard-8B | 86.40 | 95.20 | 86.10 |
+
+### Highlights
+
+- Average off-the-shelf guard accuracy on AgentHazard improves from **38.79% → 82.38%**.
+- BraveGuard synthesizes **7,308 executable tasks**.
+- Coverage includes **28 risk categories** and **32 attack methods**.
+- Each task contains an average of **3.36 decomposed execution steps**.
+
+---
+
+## 📈 Category-wise Performance
+
+BraveGuard demonstrates strong performance across most AgentHazard categories while maintaining competitive generalization on ATBench.
+
+Remaining challenges such as **data exfiltration**, **compliance bypass**, and other advanced attack scenarios highlight promising directions for future work.
 
 <p align="center">
   <img src="assets/category_performance.png" alt="Category-wise BraveGuard performance on AgentHazard-Strongest and ATBench-500" width="900" />
 </p>
 
-## Core Components
+---
 
-- `generate.py`: Generates or replays agent trajectories.
-- `run_eval.py`: Main entry for batch guard-model evaluation.
-- `evaluator/`: Prompt building, model adapters, parsing, metrics, and pipeline logic.
-- `rock_runner.py` / `local_runner.py`: Runtime backends for trajectory execution.
-- `sft/`: Data construction for supervised fine-tuning.
-- `data/`: Public benchmark/task files used by the project.
+## 🏗 Repository Structure
 
-## Evaluation Modes
+```text
+.
+├── generate.py
+├── run_eval.py
+├── evaluator/
+├── sft/
+├── data/
+├── rock_runner.py
+└── local_runner.py
+```
 
-BraveGuard supports three prompt modes for controlled ablations:
+### Components
 
-1. **Mode 1**: trajectory + attack metadata.
-2. **Mode 2**: trajectory + policy/evaluation criteria.
-3. **Mode 3**: pure trajectory judgment with minimal hints.
+| Module | Description |
+|----------|----------|
+| `generate.py` | Generate or replay agent trajectories |
+| `run_eval.py` | Batch evaluation entrypoint |
+| `evaluator/` | Prompt construction, model adapters, parsing, metrics, and evaluation pipelines |
+| `rock_runner.py` | ROCK execution backend |
+| `local_runner.py` | Local execution backend |
+| `sft/` | Supervised fine-tuning data construction |
+| `data/` | Public benchmark and task resources |
 
-This design allows studying guard robustness under both ideal and realistic observability.
+---
 
-## Quick Start
+## 🔬 Evaluation Modes
 
-### 1) Environment
+BraveGuard supports three evaluation settings with different observability assumptions:
+
+| Mode | Input |
+|--------|--------|
+| Mode 1 | Trajectory + attack metadata |
+| Mode 2 | Trajectory + safety policy / evaluation criteria |
+| Mode 3 | Pure trajectory-only judgment |
+
+These modes enable controlled studies of guard robustness under varying levels of available context.
+
+---
+
+## 🚀 Quick Start
+
+### 1. Environment Setup
 
 ```bash
 conda env create -f environment.yml
 conda activate braveguard
 ```
 
-### 2) Configure keys and endpoints
+### 2. Configure Credentials
 
-Copy template configs and fill in your own credentials:
+Fill in the following configuration files with your own credentials and endpoints:
 
-- `config/config.json`
-- `config/llm_judge.yaml`
-- `config/openclaw.json`
+```text
+config/config.json
+config/llm_judge.yaml
+config/openclaw.json
+```
 
-### 3) Generate trajectories
+### 3. Generate Agent Trajectories
 
 ```bash
 python generate.py
 ```
 
-### 4) Evaluate guard models
+### 4. Evaluate Guard Models
 
 ```bash
 python run_eval.py \
@@ -112,17 +184,36 @@ python run_eval.py \
   --output-dir results
 ```
 
-## Repository Hygiene & Security
+### 5. Load Released BraveGuard Models
 
-This repo intentionally uses **placeholder credentials** in tracked configs. Before running experiments:
+```python
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
-- Never commit real API keys/tokens.
-- Keep secrets in local environment variables or untracked files.
-- Treat exported trajectories as potentially sensitive and sanitize before sharing.
+model_id = "Yunhao-Feng/BraveGuard"
 
-## Citation
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModelForCausalLM.from_pretrained(
+    model_id,
+    trust_remote_code=True
+)
+```
 
-If you find this project useful, please cite the associated arXiv paper:
+---
+
+## 🔒 Security Notes
+
+Before running experiments:
+
+- Never commit real API keys or access tokens.
+- Store secrets in environment variables or untracked local files.
+- Treat collected trajectories as potentially sensitive data.
+- Sanitize logs and trajectories before public release.
+
+---
+
+## 📖 Citation
+
+If you find BraveGuard useful in your research, please cite:
 
 ```bibtex
 @misc{feng2026braveguard,
@@ -136,6 +227,8 @@ If you find this project useful, please cite the associated arXiv paper:
 }
 ```
 
+---
+
 ## License
 
-MIT License.
+Released under the MIT License.
