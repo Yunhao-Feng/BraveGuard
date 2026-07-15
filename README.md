@@ -1,33 +1,9 @@
 <div align="center">
   <img src="assets/logo.png" alt="BraveGuard logo" width="180" />
 
-# BraveGuard
-
-### From Open-World Threats to Safer Computer-Use Agents
-[![arXiv](https://img.shields.io/badge/arXiv-2606.01166-b31b1b.svg)](https://arxiv.org/abs/2606.01166)
-[![Hugging Face](https://img.shields.io/badge/HuggingFace-BraveGuard-yellow)](https://huggingface.co/Yunhao-Feng/BraveGuard)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#license)
-
-</div>
-
 BraveGuard is a research framework for **trajectory-level safety evaluation and guard model training for computer-use agents**.
 
 Unlike conventional moderation systems that operate on isolated prompts or responses, BraveGuard focuses on the more realistic and challenging setting of **multi-step agent trajectories**, where risks emerge through sequences of actions, tool interactions, intermediate reasoning, and accumulated side effects.
-
-> 📄 Paper: **BraveGuard: From Open-World Threats to Safer Computer-Use Agents**  
-> https://arxiv.org/abs/2606.01166
-
----
-
-## 🤗 Model Release
-
-We release the BraveGuard guard models on Hugging Face:
-
-| Model | Link |
-|---------|---------|
-| BraveGuard | https://huggingface.co/Yunhao-Feng/BraveGuard |
-
-The released model is trained using the BraveGuard self-evolving defense framework and is designed for trajectory-level safety assessment of computer-use agents.
 
 ---
 
@@ -71,21 +47,21 @@ BraveGuard significantly improves trajectory-level safety detection on challengi
 
 ### AgentHazard-Strongest (GPT-5.5 + OpenClaw)
 
-| Model | Acc. (%) | Rec. (%) | F1 (%) |
-| --- | ---: | ---: | ---: |
-| AgentDoG-Llama3.1-8B | 64.26 | 58.97 | 70.99 |
-| AgentDoG-Qwen2.5-7B | 65.02 | 60.51 | 71.95 |
-| BraveGuard-Llama-Guard-8B | 82.51 | 92.82 | 88.73 |
-| BraveGuard-Qwen3-Guard-8B | **83.65** | 91.28 | **89.22** |
-| BraveGuard-Qwen3-Guard-4B | 80.99 | 88.72 | 87.37 |
+| Model                     |        Acc. (%) | Rec. (%) |          F1 (%) |
+| ------------------------- | --------------: | -------: | --------------: |
+| AgentDoG-Llama3.1-8B      |           64.26 |    58.97 |           70.99 |
+| AgentDoG-Qwen2.5-7B       |           65.02 |    60.51 |           71.95 |
+| BraveGuard-Llama-Guard-8B |           82.51 |    92.82 |           88.73 |
+| BraveGuard-Qwen3-Guard-8B | **83.65** |    91.28 | **89.22** |
+| BraveGuard-Qwen3-Guard-4B |           80.99 |    88.72 |           87.37 |
 
 ### ATBench-500
 
-| Model | Acc. (%) | Rec. (%) | F1 (%) |
-| --- | ---: | ---: | ---: |
-| AgentDoG-Qwen2.5-7B | **87.40** | 95.60 | 88.40 |
-| AgentDoG-Llama3.1-8B | 87.60 | **98.40** | **88.80** |
-| BraveGuard-Qwen3-Guard-8B | 86.40 | 95.20 | 86.10 |
+| Model                     |        Acc. (%) |        Rec. (%) |          F1 (%) |
+| ------------------------- | --------------: | --------------: | --------------: |
+| AgentDoG-Qwen2.5-7B       | **87.40** |           95.60 |           88.40 |
+| AgentDoG-Llama3.1-8B      |           87.60 | **98.40** | **88.80** |
+| BraveGuard-Qwen3-Guard-8B |           86.40 |           95.20 |           86.10 |
 
 ### Highlights
 
@@ -123,15 +99,15 @@ Remaining challenges such as **data exfiltration**, **compliance bypass**, and o
 
 ### Components
 
-| Module | Description |
-|----------|----------|
-| `generate.py` | Generate or replay agent trajectories |
-| `run_eval.py` | Batch evaluation entrypoint |
-| `evaluator/` | Prompt construction, model adapters, parsing, metrics, and evaluation pipelines |
-| `rock_runner.py` | ROCK execution backend |
-| `local_runner.py` | Local execution backend |
-| `sft/` | Supervised fine-tuning data construction |
-| `data/` | Public benchmark and task resources |
+| Module              | Description                                                                     |
+| ------------------- | ------------------------------------------------------------------------------- |
+| `generate.py`     | Generate or replay agent trajectories                                           |
+| `run_eval.py`     | Batch evaluation entrypoint                                                     |
+| `evaluator/`      | Prompt construction, model adapters, parsing, metrics, and evaluation pipelines |
+| `rock_runner.py`  | ROCK execution backend                                                          |
+| `local_runner.py` | Local execution backend                                                         |
+| `sft/`            | Supervised fine-tuning data construction                                        |
+| `data/`           | Public benchmark and task resources                                             |
 
 ---
 
@@ -139,11 +115,11 @@ Remaining challenges such as **data exfiltration**, **compliance bypass**, and o
 
 BraveGuard supports three evaluation settings with different observability assumptions:
 
-| Mode | Input |
-|--------|--------|
-| Mode 1 | Trajectory + attack metadata |
+| Mode   | Input                                            |
+| ------ | ------------------------------------------------ |
+| Mode 1 | Trajectory + attack metadata                     |
 | Mode 2 | Trajectory + safety policy / evaluation criteria |
-| Mode 3 | Pure trajectory-only judgment |
+| Mode 3 | Pure trajectory-only judgment                    |
 
 These modes enable controlled studies of guard robustness under varying levels of available context.
 
@@ -184,20 +160,6 @@ python run_eval.py \
   --output-dir results
 ```
 
-### 5. Load Released BraveGuard Models
-
-```python
-from transformers import AutoTokenizer, AutoModelForCausalLM
-
-model_id = "Yunhao-Feng/BraveGuard"
-
-tokenizer = AutoTokenizer.from_pretrained(model_id)
-model = AutoModelForCausalLM.from_pretrained(
-    model_id,
-    trust_remote_code=True
-)
-```
-
 ---
 
 ## 🔒 Security Notes
@@ -209,23 +171,6 @@ Before running experiments:
 - Treat collected trajectories as potentially sensitive data.
 - Sanitize logs and trajectories before public release.
 
----
-
-## 📖 Citation
-
-If you find BraveGuard useful in your research, please cite:
-
-```bibtex
-@misc{feng2026braveguard,
-  title        = {BraveGuard: From Open-World Threats to Safer Computer-Use Agents},
-  author       = {Yunhao Feng and Yifan Ding and Xiaohu Du and Ming Wen and Xinhao Deng and Yanming Guo and Yuxiang Xie and Baihui Zheng and Yingshui Tan and Yige Li and Yutao Wu and Yixu Wang and Kerui Cao and Wenke Huang and Xingjun Ma and Yu-Gang Jiang},
-  year         = {2026},
-  eprint       = {2606.01166},
-  archivePrefix = {arXiv},
-  primaryClass = {cs.CR},
-  url          = {https://arxiv.org/abs/2606.01166}
-}
-```
 
 ---
 
